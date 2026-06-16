@@ -149,22 +149,30 @@ class ApiInspectorInterceptor extends Interceptor {
     await repository.saveLog(log);
     final total = await repository.getTotalCount();
     if (total > maxStoredLogs) {
-      final all = await repository.getLogs(
-        GetLogsParams(pageSize: total, sortOrder: SortOrder.oldest),
+      final oldest = await repository.getLogs(
+        GetLogsParams(
+          pageSize: total - maxStoredLogs,
+          sortOrder: SortOrder.oldest,
+        ),
       );
-      final toDelete = all.take(total - maxStoredLogs);
-      for (final old in toDelete) {
+      for (final old in oldest) {
         await repository.deleteLog(old.id);
       }
     }
   }
 
-  HttpMethod _parseMethod(String method) {
-    return HttpMethod.values.firstWhere(
-      (m) => m.name.toUpperCase() == method.toUpperCase(),
-      orElse: () => HttpMethod.get,
-    );
-  }
+  static const Map<String, HttpMethod> _methodMap = {
+    'GET': HttpMethod.get,
+    'POST': HttpMethod.post,
+    'PUT': HttpMethod.put,
+    'PATCH': HttpMethod.patch,
+    'DELETE': HttpMethod.delete,
+    'HEAD': HttpMethod.head,
+    'OPTIONS': HttpMethod.options,
+  };
+
+  HttpMethod _parseMethod(String method) =>
+      _methodMap[method.toUpperCase()] ?? HttpMethod.get;
 
   String? _encodeBody(dynamic data) {
     if (data == null) return null;

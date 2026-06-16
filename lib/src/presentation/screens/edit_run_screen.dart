@@ -15,7 +15,12 @@ class EditRunScreen extends StatelessWidget {
   const EditRunScreen({super.key, required this.log});
 
   static Route<void> route({required ApiLogEntity log}) {
-    return MaterialPageRoute(builder: (_) => EditRunScreen(log: log));
+    return PageRouteBuilder<void>(
+      pageBuilder: (_, __, ___) => EditRunScreen(log: log),
+      transitionsBuilder: (_, animation, __, child) =>
+          FadeTransition(opacity: animation, child: child),
+      transitionDuration: const Duration(milliseconds: 250),
+    );
   }
 
   @override

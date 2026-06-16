@@ -23,8 +23,11 @@ class InspectorDetailScreen extends StatelessWidget {
   const InspectorDetailScreen({super.key, required this.logId});
 
   static Route<void> route({required String logId}) {
-    return MaterialPageRoute(
-      builder: (_) => InspectorDetailScreen(logId: logId),
+    return PageRouteBuilder<void>(
+      pageBuilder: (_, __, ___) => InspectorDetailScreen(logId: logId),
+      transitionsBuilder: (_, animation, __, child) =>
+          FadeTransition(opacity: animation, child: child),
+      transitionDuration: const Duration(milliseconds: 250),
     );
   }
 

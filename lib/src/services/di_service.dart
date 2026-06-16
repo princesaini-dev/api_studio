@@ -1,4 +1,8 @@
 import 'package:hive_flutter/hive_flutter.dart';
+import 'connectivity_checker_native.dart'
+    if (dart.library.html) 'connectivity_checker_web.dart';
+import 'connectivity_service.dart';
+import 'failed_api_count_service.dart';
 import '../core/constants/app_constants.dart';
 import '../core/constants/hive_constants.dart';
 import '../data/datasources/hive_datasource.dart';
@@ -32,6 +36,8 @@ class DiService {
   static Future<void> init({
     int? maxStoredLogs,
     Duration? requestTimeout,
+    bool enableConnectivityStream = false,
+    bool enableFailedApiStream = false,
   }) async {
     if (_initialized) return;
     if (maxStoredLogs != null) _maxStoredLogs = maxStoredLogs;
@@ -47,7 +53,21 @@ class DiService {
       requestTimeout: _requestTimeout,
     );
     _initialized = true;
+    if (enableConnectivityStream) ConnectivityService.instance.start();
+    if (enableFailedApiStream) FailedApiCountService.instance.start(_repository);
   }
+
+  static bool get isConnected => ConnectivityService.instance.isConnected;
+
+  static Stream<bool> get internetConnectivityStream =>
+      ConnectivityService.instance.stream;
+
+  static int get failedApiCount => FailedApiCountService.instance.failedApiCount;
+
+  static Stream<int> get failedApiCountStream =>
+      FailedApiCountService.instance.stream;
+
+  static Future<bool> get isInternetAvailable => checkConnectivity();
 
   static ApiLogRepository get repository {
     assert(_initialized, 'DiService.init() must be called before use');

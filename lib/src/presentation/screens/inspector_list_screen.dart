@@ -20,7 +20,12 @@ class InspectorListScreen extends StatelessWidget {
   const InspectorListScreen({super.key});
 
   static Route<void> route() {
-    return MaterialPageRoute(builder: (_) => const InspectorListScreen());
+    return PageRouteBuilder<void>(
+      pageBuilder: (_, __, ___) => const InspectorListScreen(),
+      transitionsBuilder: (_, animation, __, child) =>
+          FadeTransition(opacity: animation, child: child),
+      transitionDuration: const Duration(milliseconds: 250),
+    );
   }
 
   @override
