@@ -1,6 +1,6 @@
 name: api_studio
 description: "A powerful in-app API debugging and inspection tool for Flutter. Supports Dio interception, persistent logs, edit-and-run, CURL export, and a beautiful inspector dashboard."
-version: 0.0.1
+version: 0.1.0
 homepage: https://github.com/princesaini-dev/api_studio
 repository: https://github.com/princesaini-dev/api_studio
 issue_tracker: https://github.com/princesaini-dev/api_studio/issues
