@@ -15,6 +15,8 @@ import '../domain/usecases/delete_log_usecase.dart';
 import '../domain/usecases/get_logs_usecase.dart';
 import '../domain/usecases/run_request_usecase.dart';
 import '../domain/usecases/save_log_usecase.dart';
+import '../notification/config/notification_config.dart';
+import '../notification/services/notification_service.dart';
 import '../presentation/blocs/edit_run/edit_run_bloc.dart';
 import '../presentation/blocs/export/export_bloc.dart';
 import '../presentation/blocs/inspector_detail/inspector_detail_bloc.dart';
@@ -26,22 +28,32 @@ class DiService {
 
   static late ApiLogRepository _repository;
   static late ApiInspectorInterceptor _interceptor;
+  static NotificationService? _notificationService;
   static bool _initialized = false;
   static int _maxStoredLogs = AppConstants.maxStoredLogs;
   static Duration _requestTimeout = AppConstants.requestTimeout;
 
   static int get maxStoredLogs => _maxStoredLogs;
   static Duration get requestTimeout => _requestTimeout;
+  static NotificationService? get notificationService => _notificationService;
 
   static Future<void> init({
     int? maxStoredLogs,
     Duration? requestTimeout,
     bool enableConnectivityStream = false,
     bool enableFailedApiStream = false,
+    NotificationConfig? notificationConfig,
   }) async {
     if (_initialized) return;
     if (maxStoredLogs != null) _maxStoredLogs = maxStoredLogs;
     if (requestTimeout != null) _requestTimeout = requestTimeout;
+
+    // Initialize notification service if configured
+    if (notificationConfig != null && notificationConfig.hasAnyNotification) {
+      _notificationService = NotificationService(config: notificationConfig);
+      await _notificationService!.initialize();
+    }
+
     await Hive.initFlutter(HiveConstants.hiveSubDir);
     Hive.registerAdapter(ApiLogHiveModelAdapter());
     final box = await HiveApiLogDataSource.openBox();
@@ -51,6 +63,7 @@ class DiService {
       repository: _repository,
       maxStoredLogs: _maxStoredLogs,
       requestTimeout: _requestTimeout,
+      notificationService: _notificationService,
     );
     _initialized = true;
     if (enableConnectivityStream) ConnectivityService.instance.start();

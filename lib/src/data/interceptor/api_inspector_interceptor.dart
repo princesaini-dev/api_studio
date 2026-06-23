@@ -1,14 +1,17 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:uuid/uuid.dart';
 import '../../core/constants/app_constants.dart';
 import '../../domain/entities/api_log_entity.dart';
 import '../../domain/repositories/api_log_repository.dart';
+import '../../notification/services/notification_service.dart';
 
 class ApiInspectorInterceptor extends Interceptor {
   final ApiLogRepository repository;
   final int maxStoredLogs;
   final Duration requestTimeout;
+  final NotificationService? notificationService;
   final _uuid = const Uuid();
   final Map<String, _PendingRequest> _pending = {};
 
@@ -16,6 +19,7 @@ class ApiInspectorInterceptor extends Interceptor {
     required this.repository,
     this.maxStoredLogs = AppConstants.maxStoredLogs,
     this.requestTimeout = AppConstants.requestTimeout,
+    this.notificationService,
   });
 
   @override
@@ -93,7 +97,7 @@ class ApiInspectorInterceptor extends Interceptor {
   }
 
   @override
-  void onError(DioException err, ErrorInterceptorHandler handler) {
+  void onError(DioException err, ErrorInterceptorHandler handler) async {
     final id = err.requestOptions.extra['_inspector_id'] as String?;
     final startMs = err.requestOptions.extra['_inspector_start'] as int?;
     if (id == null) {
@@ -141,8 +145,21 @@ class ApiInspectorInterceptor extends Interceptor {
       status: LogStatus.error,
     );
 
-    _saveWithLimit(log);
+    await _saveWithLimit(log);
+
+    // Trigger notification for failed API
+    await _triggerNotification(log);
+
     handler.next(err);
+  }
+
+  /// Triggers notification for failed API if notification service is configured.
+  Future<void> _triggerNotification(ApiLogEntity log) async {
+    if (notificationService == null) return;
+    if (!notificationService!.hasProviders) return;
+
+    // Fire and forget - notification should not block the error flow
+    unawaited(notificationService!.notifyApiFailed(log));
   }
 
   Future<void> _saveWithLimit(ApiLogEntity log) async {

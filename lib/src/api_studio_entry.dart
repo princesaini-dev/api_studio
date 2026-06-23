@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'notification/config/notification_config.dart';
 import 'services/di_service.dart';
 import 'presentation/screens/inspector_list_screen.dart';
 import 'theme/api_inspector_theme.dart';
@@ -16,6 +17,7 @@ class ApiStudio {
     Duration? requestTimeout,
     bool enableConnectivityStream = false,
     bool enableFailedApiStream = false,
+    NotificationConfig? notificationConfig,
   }) async {
     if (theme != null) _themeData = theme;
     await DiService.init(
@@ -23,6 +25,7 @@ class ApiStudio {
       requestTimeout: requestTimeout,
       enableConnectivityStream: enableConnectivityStream,
       enableFailedApiStream: enableFailedApiStream,
+      notificationConfig: notificationConfig,
     );
   }
 
