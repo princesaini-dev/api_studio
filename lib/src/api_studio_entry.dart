@@ -4,7 +4,6 @@ import 'services/di_service.dart';
 import 'presentation/screens/inspector_list_screen.dart';
 import 'theme/api_inspector_theme.dart';
 import 'theme/api_inspector_theme_data.dart';
-import 'data/interceptor/api_inspector_interceptor.dart';
 import 'api_client/client/api_studio_client.dart';
 
 class ApiStudio {
@@ -51,8 +50,6 @@ class ApiStudio {
       config: config,
     );
   }
-
-  static ApiInspectorInterceptor get interceptor => DiService.interceptor;
 
   static Future<bool> isInternetConnected() => DiService.isInternetAvailable;
 

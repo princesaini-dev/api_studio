@@ -12,8 +12,6 @@ export 'src/domain/usecases/delete_log_usecase.dart';
 export 'src/domain/usecases/clear_logs_usecase.dart';
 export 'src/domain/usecases/run_request_usecase.dart';
 
-export 'src/data/interceptor/api_inspector_interceptor.dart';
-
 export 'src/presentation/screens/inspector_list_screen.dart';
 export 'src/presentation/screens/inspector_detail_screen.dart';
 export 'src/presentation/screens/edit_run_screen.dart';

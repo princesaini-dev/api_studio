@@ -6,7 +6,6 @@ import 'failed_api_count_service.dart';
 import '../core/constants/app_constants.dart';
 import '../core/constants/hive_constants.dart';
 import '../data/datasources/hive_datasource.dart';
-import '../data/interceptor/api_inspector_interceptor.dart';
 import '../data/models/api_log_hive_model.dart';
 import '../data/repositories/api_log_repository_impl.dart';
 import '../domain/repositories/api_log_repository.dart';
@@ -29,7 +28,6 @@ class DiService {
   DiService._();
 
   static late ApiLogRepository _repository;
-  static late ApiInspectorInterceptor _interceptor;
   static NotificationService? _notificationService;
   static bool _initialized = false;
   static int _maxStoredLogs = AppConstants.maxStoredLogs;
@@ -61,12 +59,6 @@ class DiService {
     final box = await HiveApiLogDataSource.openBox();
     final dataSource = HiveApiLogDataSource(box);
     _repository = ApiLogRepositoryImpl(dataSource);
-    _interceptor = ApiInspectorInterceptor(
-      repository: _repository,
-      maxStoredLogs: _maxStoredLogs,
-      requestTimeout: _requestTimeout,
-      notificationService: _notificationService,
-    );
     _initialized = true;
     if (enableConnectivityStream) ConnectivityService.instance.start();
     if (enableFailedApiStream) {
@@ -98,11 +90,6 @@ class DiService {
   static ApiLogRepository get repository {
     assert(_initialized, 'DiService.init() must be called before use');
     return _repository;
-  }
-
-  static ApiInspectorInterceptor get interceptor {
-    assert(_initialized, 'DiService.init() must be called before use');
-    return _interceptor;
   }
 
   static InspectorListBloc createListBloc() => InspectorListBloc(

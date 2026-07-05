@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:dio/dio.dart';
+import 'dart:io';
 import '../entities/api_log_entity.dart';
 import '../repositories/api_log_repository.dart';
 import '../../core/usecases/usecase.dart';
@@ -32,15 +32,6 @@ class RunRequestUseCase implements UseCase<ApiLogEntity, RunRequestParams> {
 
   @override
   Future<ApiLogEntity> call(RunRequestParams params) async {
-    final dio = Dio(
-      BaseOptions(
-        connectTimeout: AppConstants.requestTimeout,
-        receiveTimeout: AppConstants.requestTimeout,
-        validateStatus: (_) => true,
-        headers: Map<String, dynamic>.from(params.headers),
-      ),
-    );
-
     final stopwatch = Stopwatch()..start();
     int? statusCode;
     String? responseBody;
@@ -49,33 +40,74 @@ class RunRequestUseCase implements UseCase<ApiLogEntity, RunRequestParams> {
     LogStatus status = LogStatus.loading;
 
     try {
-      final response = await dio.request(
-        params.url,
-        queryParameters: params.queryParams.isNotEmpty ? params.queryParams : null,
-        data: params.body != null ? jsonDecode(params.body!) : null,
-        options: Options(method: params.method.name.toUpperCase()),
-      );
+      // Build URI with query parameters
+      var uri = Uri.parse(params.url);
+      if (params.queryParams.isNotEmpty) {
+        final merged = Map<String, String>.from(uri.queryParameters)
+          ..addAll(params.queryParams.map((k, v) => MapEntry(k, v.toString())));
+        uri = uri.replace(queryParameters: merged);
+      }
 
-      stopwatch.stop();
-      statusCode = response.statusCode;
-      responseBody = response.data is String
-          ? response.data as String
-          : jsonEncode(response.data);
-      response.headers.forEach((key, values) {
-        responseHeaders[key] = values.join(', ');
+      final client = HttpClient()
+        ..connectionTimeout = AppConstants.requestTimeout;
+
+      final ioRequest =
+          await client.openUrl(params.method.name.toUpperCase(), uri).timeout(
+                AppConstants.requestTimeout,
+              );
+
+      // Headers
+      for (final e in params.headers.entries) {
+        try {
+          ioRequest.headers.set(e.key, e.value.toString());
+        } catch (_) {}
+      }
+
+      // Body
+      if (params.body != null && params.body!.isNotEmpty) {
+        final bytes = utf8.encode(params.body!);
+        ioRequest.contentLength = bytes.length;
+        if (ioRequest.headers.value(HttpHeaders.contentTypeHeader) == null) {
+          ioRequest.headers.contentType =
+              ContentType('application', 'json', charset: 'utf-8');
+        }
+        ioRequest.add(bytes);
+      }
+
+      final ioResponse =
+          await ioRequest.close().timeout(AppConstants.requestTimeout);
+
+      // Collect response headers
+      ioResponse.headers.forEach((name, values) {
+        responseHeaders[name] = values.join(', ');
       });
-      status = (statusCode != null && statusCode >= 200 && statusCode < 400)
+
+      // Read body
+      final chunks = <int>[];
+      await for (final chunk in ioResponse) {
+        chunks.addAll(chunk);
+      }
+      final rawBody = utf8.decode(chunks, allowMalformed: true);
+
+      // Try JSON decode, fall back to raw string
+      try {
+        final decoded = jsonDecode(rawBody);
+        responseBody = decoded is String ? decoded : jsonEncode(decoded);
+      } catch (_) {
+        responseBody = rawBody;
+      }
+
+      statusCode = ioResponse.statusCode;
+      status = (statusCode >= 200 && statusCode < 400)
           ? LogStatus.success
           : LogStatus.error;
-    } on DioException catch (e) {
-      stopwatch.stop();
-      statusCode = e.response?.statusCode;
-      errorMessage = e.message;
-      status = LogStatus.error;
+
+      client.close();
     } catch (e) {
-      stopwatch.stop();
       errorMessage = e.toString();
       status = LogStatus.error;
+    } finally {
+      stopwatch.stop();
     }
 
     final newLog = ApiLogEntity(
