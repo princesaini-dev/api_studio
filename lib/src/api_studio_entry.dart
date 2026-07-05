@@ -5,6 +5,7 @@ import 'presentation/screens/inspector_list_screen.dart';
 import 'theme/api_inspector_theme.dart';
 import 'theme/api_inspector_theme_data.dart';
 import 'data/interceptor/api_inspector_interceptor.dart';
+import 'api_client/client/api_studio_client.dart';
 
 class ApiStudio {
   ApiStudio._();
@@ -29,6 +30,28 @@ class ApiStudio {
     );
   }
 
+  /// Initialises [ApiStudioClient] with the given [baseUrl] and optional
+  /// [config]. Call this after [ApiStudio.init].
+  ///
+  /// ```dart
+  /// await ApiStudio.init(...);
+  /// ApiStudio.initClient(baseUrl: 'https://api.example.com');
+  /// // Then use: ApiStudioClient.instance.get(...)
+  /// ```
+  static void initClient({
+    required String baseUrl,
+    Duration timeout = const Duration(seconds: 30),
+    Map<String, String> defaultHeaders = const {},
+    ClientConfig? config,
+  }) {
+    ApiStudioClient.initialize(
+      baseUrl: baseUrl,
+      timeout: timeout,
+      defaultHeaders: defaultHeaders,
+      config: config,
+    );
+  }
+
   static ApiInspectorInterceptor get interceptor => DiService.interceptor;
 
   static Future<bool> isInternetConnected() => DiService.isInternetAvailable;
@@ -38,8 +61,7 @@ class ApiStudio {
 
   static int get failedApiCount => DiService.failedApiCount;
 
-  static Stream<int> get failedApiCountStream =>
-      DiService.failedApiCountStream;
+  static Stream<int> get failedApiCountStream => DiService.failedApiCountStream;
 
   static void show(
     BuildContext context, {

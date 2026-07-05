@@ -1,7 +1,7 @@
 export 'src/core/constants/app_constants.dart';
 export 'src/core/constants/hive_constants.dart';
 export 'src/core/errors/failures.dart';
-export 'src/core/errors/exceptions.dart';
+export 'src/core/errors/exceptions.dart' hide NetworkException;
 export 'src/core/utils/curl_generator.dart';
 
 export 'src/domain/entities/api_log_entity.dart';
@@ -31,3 +31,6 @@ export 'src/notification/providers/notification_provider.dart';
 export 'src/notification/providers/slack_provider.dart';
 export 'src/notification/services/notification_service.dart';
 export 'src/notification/utils/sensitive_data_masker.dart';
+
+// ApiStudioClient — first-class HTTP client
+export 'src/api_client/api_studio_client.dart';

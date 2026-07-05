@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../core/constants/app_strings.dart';
 import '../../services/di_service.dart';
 import '../../theme/api_inspector_theme.dart';
 import '../../theme/app_colors.dart';
@@ -75,10 +76,26 @@ class _InspectorListView extends StatelessWidget {
       backgroundColor: theme.surfaceColor,
       elevation: 0,
       scrolledUnderElevation: 1,
-      title: Text(
-        'API Inspector',
-        style: AppTextStyles.headlineMedium
-            .copyWith(color: theme.textPrimaryColor),
+      titleSpacing: Dimensions.lg,
+      title: Row(
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(Dimensions.radiusSm),
+            ),
+            child: const Icon(Icons.radar_rounded,
+                size: 16, color: AppColors.primary),
+          ),
+          const SizedBox(width: Dimensions.sm),
+          Text(
+            AppStrings.appTitle,
+            style: AppTextStyles.headlineMedium
+                .copyWith(color: theme.textPrimaryColor),
+          ),
+        ],
       ),
       actions: [
         BlocBuilder<InspectorListBloc, InspectorListState>(
@@ -86,16 +103,19 @@ class _InspectorListView extends StatelessWidget {
           builder: (context, state) => state.logs.isNotEmpty
               ? IconButton(
                   icon: Icon(Icons.delete_sweep_outlined,
-                      color: theme.textSecondaryColor),
-                  tooltip: 'Clear all logs',
-                  onPressed: () => _confirmClear(context),
+                      color: theme.textSecondaryColor, size: Dimensions.iconMd),
+                  tooltip: AppStrings.clearAllLogs,
+                  onPressed: () => _confirmClear(context, theme),
                 )
               : const SizedBox.shrink(),
         ),
         PopupMenuButton<String>(
-          icon: Icon(Icons.ios_share_rounded, color: theme.textSecondaryColor),
-          tooltip: 'Export',
+          icon: Icon(Icons.ios_share_rounded,
+              color: theme.textSecondaryColor, size: Dimensions.iconMd),
+          tooltip: AppStrings.exportLogs,
           color: theme.cardColor,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(Dimensions.radiusMd)),
           onSelected: (v) {
             final bloc = context.read<ExportBloc>();
             if (v == 'json') bloc.add(const ExportAsJsonEvent());
@@ -104,37 +124,62 @@ class _InspectorListView extends StatelessWidget {
           itemBuilder: (_) => [
             PopupMenuItem(
                 value: 'json',
-                child: Text('Export as JSON',
-                    style: AppTextStyles.bodyMedium
-                        .copyWith(color: theme.textPrimaryColor))),
+                child: Row(
+                  children: [
+                    const Icon(Icons.data_object_rounded,
+                        size: 16, color: AppColors.primary),
+                    const SizedBox(width: Dimensions.sm),
+                    Text(AppStrings.exportAsJson,
+                        style: AppTextStyles.bodyMedium
+                            .copyWith(color: theme.textPrimaryColor)),
+                  ],
+                )),
             PopupMenuItem(
                 value: 'txt',
-                child: Text('Export as TXT',
-                    style: AppTextStyles.bodyMedium
-                        .copyWith(color: theme.textPrimaryColor))),
+                child: Row(
+                  children: [
+                    Icon(Icons.text_snippet_outlined,
+                        size: 16, color: theme.textSecondaryColor),
+                    const SizedBox(width: Dimensions.sm),
+                    Text(AppStrings.exportAsTxt,
+                        style: AppTextStyles.bodyMedium
+                            .copyWith(color: theme.textPrimaryColor)),
+                  ],
+                )),
           ],
         ),
+        const SizedBox(width: Dimensions.xs),
       ],
     );
   }
 
-  void _confirmClear(BuildContext context) {
-    showDialog(
+  void _confirmClear(BuildContext context, dynamic theme) {
+    showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Clear all logs?'),
-        content: const Text('This action cannot be undone.'),
+        backgroundColor: theme.cardColor,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(Dimensions.radiusLg)),
+        title: Text(AppStrings.confirmClearTitle,
+            style: AppTextStyles.headlineSmall
+                .copyWith(color: theme.textPrimaryColor)),
+        content: Text(AppStrings.confirmClearMessage,
+            style: AppTextStyles.bodyMedium
+                .copyWith(color: theme.textSecondaryColor)),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel')),
+              child: Text(AppStrings.cancel,
+                  style: AppTextStyles.labelLarge
+                      .copyWith(color: theme.textSecondaryColor))),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
               context.read<InspectorListBloc>().add(const ClearAllLogsEvent());
             },
-            child:
-                const Text('Clear', style: TextStyle(color: AppColors.error)),
+            child: Text(AppStrings.clear,
+                style:
+                    AppTextStyles.labelLarge.copyWith(color: AppColors.error)),
           ),
         ],
       ),
@@ -216,8 +261,12 @@ class _LogListSectionState extends State<_LogListSection> {
     return BlocBuilder<InspectorListBloc, InspectorListState>(
       builder: (context, state) {
         if (state.status == InspectorListStatus.loading && state.logs.isEmpty) {
-          return Center(
-              child: CircularProgressIndicator(color: theme.primaryColor));
+          return ListView.separated(
+            padding: const EdgeInsets.all(Dimensions.lg),
+            itemCount: 6,
+            separatorBuilder: (_, __) => const SizedBox(height: Dimensions.sm),
+            itemBuilder: (_, __) => const _ShimmerCard(),
+          );
         }
 
         if (state.status == InspectorListStatus.failure) {
@@ -253,19 +302,28 @@ class _LogListSectionState extends State<_LogListSection> {
                 final confirmed = await showDialog<bool>(
                   context: context,
                   builder: (ctx) => AlertDialog(
-                    title: const Text('Delete Request'),
-                    content: const Text(
-                        'Are you sure you want to delete this request log? This cannot be undone.'),
+                    backgroundColor: theme.cardColor,
+                    shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(Dimensions.radiusLg)),
+                    title: Text(AppStrings.confirmDeleteTitle,
+                        style: AppTextStyles.headlineSmall
+                            .copyWith(color: theme.textPrimaryColor)),
+                    content: Text(AppStrings.confirmDeleteMessage,
+                        style: AppTextStyles.bodyMedium
+                            .copyWith(color: theme.textSecondaryColor)),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.of(ctx).pop(false),
-                        child: const Text('Cancel'),
+                        child: Text(AppStrings.cancel,
+                            style: AppTextStyles.labelLarge
+                                .copyWith(color: theme.textSecondaryColor)),
                       ),
                       TextButton(
                         onPressed: () => Navigator.of(ctx).pop(true),
-                        style:
-                            TextButton.styleFrom(foregroundColor: Colors.red),
-                        child: const Text('Delete'),
+                        child: Text(AppStrings.delete,
+                            style: AppTextStyles.labelLarge
+                                .copyWith(color: AppColors.error)),
                       ),
                     ],
                   ),
@@ -289,20 +347,92 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.wifi_tethering_rounded,
-              size: 64, color: theme.textSecondaryColor),
-          const SizedBox(height: 16),
-          Text('No API logs yet',
-              style: AppTextStyles.headlineSmall
-                  .copyWith(color: theme.textPrimaryColor)),
-          const SizedBox(height: 8),
-          Text('Make some requests to see them here',
-              style: AppTextStyles.bodyMedium
-                  .copyWith(color: theme.textSecondaryColor)),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.all(Dimensions.xxxl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(Dimensions.radiusXl),
+              ),
+              child: const Icon(Icons.wifi_tethering_rounded,
+                  size: 36, color: AppColors.primary),
+            ),
+            const SizedBox(height: Dimensions.lg),
+            Text(AppStrings.noLogsTitle,
+                style: AppTextStyles.headlineSmall
+                    .copyWith(color: theme.textPrimaryColor),
+                textAlign: TextAlign.center),
+            const SizedBox(height: Dimensions.xs),
+            Text(AppStrings.noLogsSubtitle,
+                style: AppTextStyles.bodyMedium
+                    .copyWith(color: theme.textSecondaryColor),
+                textAlign: TextAlign.center),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ShimmerCard extends StatefulWidget {
+  const _ShimmerCard();
+
+  @override
+  State<_ShimmerCard> createState() => _ShimmerCardState();
+}
+
+class _ShimmerCardState extends State<_ShimmerCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1200))
+      ..repeat();
+    _anim = Tween<double>(begin: -1.5, end: 1.5)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = ApiInspectorTheme.of(context);
+    final base =
+        theme.isDark ? AppColors.shimmerBaseDark : AppColors.shimmerBase;
+    final highlight = theme.isDark
+        ? AppColors.shimmerHighlightDark
+        : AppColors.shimmerHighlight;
+    return AnimatedBuilder(
+      animation: _anim,
+      builder: (_, __) => Container(
+        height: 76,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(theme.borderRadius),
+          border: Border.all(color: theme.borderColor, width: 0.8),
+          gradient: LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: [base, highlight, base],
+            stops: [
+              (_anim.value + 1.5) / 3 - 0.3,
+              (_anim.value + 1.5) / 3,
+              (_anim.value + 1.5) / 3 + 0.3,
+            ].map((s) => s.clamp(0.0, 1.0)).toList(),
+          ),
+        ),
       ),
     );
   }
