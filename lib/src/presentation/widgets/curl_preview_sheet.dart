@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../core/constants/app_strings.dart';
 import '../../core/utils/curl_generator.dart';
 import '../../domain/entities/api_log_entity.dart';
 import '../../theme/api_inspector_theme.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
+import '../../theme/dimensions.dart';
 
 class CurlPreviewSheet extends StatefulWidget {
   final ApiLogEntity log;
@@ -17,6 +19,10 @@ class CurlPreviewSheet extends StatefulWidget {
       isScrollControlled: true,
       useSafeArea: true,
       backgroundColor: Colors.transparent,
+      shape: const RoundedRectangleBorder(
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(Dimensions.radiusXl)),
+      ),
       builder: (_) => CurlPreviewSheet(log: log),
     );
   }
@@ -54,62 +60,144 @@ class _CurlPreviewSheetState extends State<CurlPreviewSheet> {
       builder: (_, controller) => Container(
         decoration: BoxDecoration(
           color: theme.surfaceColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(Dimensions.radiusXl)),
         ),
         child: Column(
           children: [
-            const SizedBox(height: 12),
+            const SizedBox(height: Dimensions.md),
+            // Drag handle
             Container(
-              width: 40,
+              width: 36,
               height: 4,
               decoration: BoxDecoration(
                 color: theme.borderColor,
-                borderRadius: BorderRadius.circular(99),
+                borderRadius: BorderRadius.circular(Dimensions.radiusFull),
               ),
             ),
+            // Header row
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 8, 0),
+              padding: const EdgeInsets.fromLTRB(
+                  Dimensions.lg, Dimensions.md, Dimensions.sm, 0),
               child: Row(
                 children: [
-                  Text('CURL Command', style: AppTextStyles.headlineSmall.copyWith(color: theme.textPrimaryColor)),
-                  const Spacer(),
-                  TextButton.icon(
-                    onPressed: _copy,
-                    icon: Icon(
-                      _copied ? Icons.check : Icons.copy_rounded,
-                      size: 16,
-                      color: _copied ? AppColors.success : theme.primaryColor,
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(Dimensions.radiusSm),
                     ),
-                    label: Text(
-                      _copied ? 'Copied!' : 'Copy',
-                      style: AppTextStyles.labelMedium.copyWith(
-                        color: _copied ? AppColors.success : theme.primaryColor,
-                      ),
+                    child: const Icon(Icons.terminal_rounded,
+                        size: 16, color: AppColors.primary),
+                  ),
+                  const SizedBox(width: Dimensions.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(AppStrings.curlCommand,
+                            style: AppTextStyles.headlineSmall
+                                .copyWith(color: theme.textPrimaryColor)),
+                        Text(AppStrings.curlDescription,
+                            style: AppTextStyles.labelSmall
+                                .copyWith(color: theme.textSecondaryColor)),
+                      ],
                     ),
                   ),
+                  // Copy button
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 200),
+                    child: _copied
+                        ? Container(
+                            key: const ValueKey('copied'),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: Dimensions.md,
+                                vertical: Dimensions.xs + 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.success.withValues(alpha: 0.1),
+                              borderRadius:
+                                  BorderRadius.circular(Dimensions.radiusMd),
+                              border: Border.all(
+                                  color:
+                                      AppColors.success.withValues(alpha: 0.3)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.check_rounded,
+                                    size: 14, color: AppColors.success),
+                                const SizedBox(width: Dimensions.xs),
+                                Text(AppStrings.copied,
+                                    style: AppTextStyles.labelMedium
+                                        .copyWith(color: AppColors.success)),
+                              ],
+                            ),
+                          )
+                        : TextButton.icon(
+                            key: const ValueKey('copy'),
+                            onPressed: _copy,
+                            icon: Icon(Icons.copy_rounded,
+                                size: 14, color: theme.primaryColor),
+                            label: Text(AppStrings.copy,
+                                style: AppTextStyles.labelMedium
+                                    .copyWith(color: theme.primaryColor)),
+                          ),
+                  ),
                   IconButton(
-                    icon: Icon(Icons.close, color: theme.textSecondaryColor, size: 20),
+                    icon: Icon(Icons.close_rounded,
+                        color: theme.textSecondaryColor,
+                        size: Dimensions.iconMd),
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                 ],
               ),
             ),
-            const Divider(height: 1),
+            Divider(height: Dimensions.lg, color: theme.borderColor),
+            // Code block
             Expanded(
               child: ListView(
                 controller: controller,
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(
+                    Dimensions.lg, 0, Dimensions.lg, Dimensions.lg),
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(Dimensions.md),
                     decoration: BoxDecoration(
-                      color: theme.isDark ? const Color(0xFF0D1117) : const Color(0xFFF6F8FA),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: theme.borderColor),
+                      color: theme.isDark
+                          ? AppColors.codeBlockDark
+                          : AppColors.codeBlockLight,
+                      borderRadius: BorderRadius.circular(Dimensions.radiusMd),
+                      border: Border.all(
+                        color: theme.isDark
+                            ? AppColors.codeBlockBorderDark
+                            : AppColors.codeBlockBorderLight,
+                      ),
                     ),
                     child: SelectableText(
                       _curl,
-                      style: AppTextStyles.mono.copyWith(color: theme.textPrimaryColor, height: 1.7),
+                      style: AppTextStyles.mono
+                          .copyWith(color: theme.textPrimaryColor, height: 1.7),
+                    ),
+                  ),
+                  // Large copy button at bottom
+                  const SizedBox(height: Dimensions.md),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _copy,
+                      icon: Icon(
+                        _copied ? Icons.check_rounded : Icons.copy_rounded,
+                        size: 16,
+                        color: _copied ? AppColors.success : theme.primaryColor,
+                      ),
+                      label: Text(
+                        _copied ? AppStrings.copied : AppStrings.copyCurl,
+                        style: AppTextStyles.labelLarge.copyWith(
+                          color:
+                              _copied ? AppColors.success : theme.primaryColor,
+                        ),
+                      ),
                     ),
                   ),
                 ],

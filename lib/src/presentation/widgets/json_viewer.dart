@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../core/utils/json_formatter.dart';
 import '../../theme/api_inspector_theme.dart';
+import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
+import '../../theme/dimensions.dart';
 
 class JsonViewer extends StatefulWidget {
   final String? raw;
@@ -30,7 +32,7 @@ class _JsonViewerState extends State<JsonViewer> {
 
     if (widget.raw == null || widget.raw!.isEmpty) {
       return Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(Dimensions.lg),
         child: Text(
           'No content',
           style: AppTextStyles.bodyMedium
@@ -39,30 +41,28 @@ class _JsonViewerState extends State<JsonViewer> {
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            color: theme.isDark
-                ? const Color(0xFF0D1117)
-                : const Color(0xFFF6F8FA),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: theme.borderColor),
-          ),
-          padding: const EdgeInsets.all(12),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: SelectableText(
-              _formatted,
-              style: AppTextStyles.mono.copyWith(
-                color: theme.textPrimaryColor,
-                height: 1.6,
-              ),
-            ),
+    return Container(
+      decoration: BoxDecoration(
+        color:
+            theme.isDark ? AppColors.codeBlockDark : AppColors.codeBlockLight,
+        borderRadius: BorderRadius.circular(Dimensions.radiusMd),
+        border: Border.all(
+          color: theme.isDark
+              ? AppColors.codeBlockBorderDark
+              : AppColors.codeBlockBorderLight,
+        ),
+      ),
+      padding: const EdgeInsets.all(Dimensions.md),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SelectableText(
+          _formatted,
+          style: AppTextStyles.mono.copyWith(
+            color: theme.textPrimaryColor,
+            height: 1.65,
           ),
         ),
-      ],
+      ),
     );
   }
 }

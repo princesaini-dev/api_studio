@@ -22,6 +22,8 @@ import '../presentation/blocs/export/export_bloc.dart';
 import '../presentation/blocs/inspector_detail/inspector_detail_bloc.dart';
 import '../presentation/blocs/inspector_list/inspector_list_bloc.dart';
 import 'export_service.dart';
+import '../api_client/client/api_studio_client.dart';
+import '../api_client/core/inspector_logger.dart';
 
 class DiService {
   DiService._();
@@ -67,7 +69,17 @@ class DiService {
     );
     _initialized = true;
     if (enableConnectivityStream) ConnectivityService.instance.start();
-    if (enableFailedApiStream) FailedApiCountService.instance.start(_repository);
+    if (enableFailedApiStream) {
+      FailedApiCountService.instance.start(_repository);
+    }
+
+    // Wire ApiStudioClient logger so every client request appears in Inspector
+    final logger = InspectorLogger(
+      repository: _repository,
+      maxStoredLogs: _maxStoredLogs,
+      notificationService: _notificationService,
+    );
+    ApiStudioClient.attachLogger(logger);
   }
 
   static bool get isConnected => ConnectivityService.instance.isConnected;
@@ -75,7 +87,8 @@ class DiService {
   static Stream<bool> get internetConnectivityStream =>
       ConnectivityService.instance.stream;
 
-  static int get failedApiCount => FailedApiCountService.instance.failedApiCount;
+  static int get failedApiCount =>
+      FailedApiCountService.instance.failedApiCount;
 
   static Stream<int> get failedApiCountStream =>
       FailedApiCountService.instance.stream;
