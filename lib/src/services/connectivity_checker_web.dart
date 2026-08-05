@@ -1,4 +1,5 @@
-import 'dart:html' as html;
+import 'package:web/web.dart' as web;
 
-Future<bool> checkConnectivity() async =>
-    html.window.navigator.onLine ?? false;
+Future<bool> checkConnectivity() async {
+  return web.window.navigator.onLine;
+}
