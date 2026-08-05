@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../adapters/http_adapter.dart';
 import '../cache/cache_store.dart';
 import '../cookie/cookie_jar.dart';
+import '../core/api_studio_remote_logger.dart';
 import '../core/client_config.dart';
 import '../core/inspector_logger.dart';
 import '../enums/duplicate_strategy_enum.dart';
@@ -409,6 +410,11 @@ class ApiStudioClient {
               ),
             );
           }
+          ApiStudioRemoteLogger.logSuccess(
+            options: options,
+            response: finalResponse,
+            startTime: startTime,
+          );
 
           _inFlight.remove(dupKey);
           return finalResponse;
@@ -431,6 +437,11 @@ class ApiStudioClient {
               startTime: startTime,
             ));
           }
+          ApiStudioRemoteLogger.logError(
+            options: options,
+            error: handled,
+            startTime: startTime,
+          );
           _inFlight.remove(dupKey);
           rethrow;
         }
@@ -452,6 +463,11 @@ class ApiStudioClient {
           startTime: startTime,
         ));
       }
+      ApiStudioRemoteLogger.logError(
+        options: options,
+        error: wrapped,
+        startTime: startTime,
+      );
       throw wrapped;
     }
   }

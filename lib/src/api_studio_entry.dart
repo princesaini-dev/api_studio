@@ -5,11 +5,48 @@ import 'presentation/screens/inspector_list_screen.dart';
 import 'theme/api_inspector_theme.dart';
 import 'theme/api_inspector_theme_data.dart';
 import 'api_client/client/api_studio_client.dart';
+import 'api_client/core/api_studio_remote_logger.dart';
 
 class ApiStudio {
   ApiStudio._();
 
   static ApiInspectorThemeData _themeData = const ApiInspectorThemeData();
+
+  /// Initialises API Studio, optionally enabling automatic API execution
+  /// logging to the API Studio backend.
+  ///
+  /// ```dart
+  /// ApiStudio.initialize(
+  ///   apiKey: "YOUR_API_KEY", // Optional
+  /// );
+  /// ```
+  ///
+  /// [apiKey] is optional. When it is `null` or empty, automatic remote
+  /// logging is completely disabled and the package behaves exactly as
+  /// before — no exceptions are thrown either way.
+  static Future<void> initialize({
+    String? apiKey,
+    ApiInspectorThemeData? theme,
+    int? maxStoredLogs,
+    Duration? requestTimeout,
+    bool enableConnectivityStream = false,
+    bool enableFailedApiStream = false,
+    NotificationConfig? notificationConfig,
+  }) async {
+    try {
+      ApiStudioRemoteLogger.configure(apiKey);
+    } catch (_) {
+      // Never let logging setup affect app startup.
+    }
+    await init(
+      theme: theme,
+      maxStoredLogs: maxStoredLogs,
+      requestTimeout: requestTimeout,
+      enableConnectivityStream: enableConnectivityStream,
+      enableFailedApiStream: enableFailedApiStream,
+      notificationConfig: notificationConfig,
+    );
+  }
 
   static Future<void> init({
     ApiInspectorThemeData? theme,

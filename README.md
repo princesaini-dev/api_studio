@@ -206,6 +206,25 @@ Initialize API Studio.
 await ApiStudio.initialize();
 ```
 
+### 📊 Automatic API Logging (optional)
+
+Pass an API key to automatically send API execution logs to the API Studio
+backend. This is completely optional — omit it (or pass `null`/an empty
+string) and logging stays fully disabled with zero impact on your app.
+
+```dart
+await ApiStudio.initialize(
+  apiKey: 'YOUR_API_KEY', // Optional
+);
+```
+
+- Logging is fire-and-forget and never blocks or delays your requests.
+- Logging failures are always ignored and never throw.
+- Sensitive headers (`Authorization`, `Cookie`, `Set-Cookie`, `X-API-Key`,
+  `Proxy-Authorization`) are stripped before upload.
+- Your base URL, auth headers, interceptors and retry logic are never
+  touched — the logging request is completely independent.
+
 ---
 
 ## 🌐 HTTP Client

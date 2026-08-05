@@ -5,6 +5,10 @@ import 'package:flutter/material.dart';
 
 import 'screens/basic_get_screen.dart';
 import 'screens/post_screen.dart';
+import 'screens/put_screen.dart';
+import 'screens/patch_screen.dart';
+import 'screens/delete_screen.dart';
+import 'screens/network_failure_screen.dart';
 import 'screens/error_screen.dart';
 import 'screens/unauthorized_screen.dart';
 import 'screens/server_error_screen.dart';
@@ -27,7 +31,8 @@ import 'widgets/failed_api_badge.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await ApiStudio.init(
+  await ApiStudio.initialize(
+    apiKey: null,
     enableConnectivityStream: true,
     enableFailedApiStream: true,
   );
@@ -67,35 +72,43 @@ class _HomeScreenState extends State<HomeScreen> {
   static const _demos = <_DemoItem>[
     _DemoItem('1. Basic GET', Icons.download_rounded, Colors.blue),
     _DemoItem('2. POST Request', Icons.upload_rounded, Colors.green),
-    _DemoItem('3. Error (400)', Icons.warning_rounded, Colors.orange),
-    _DemoItem('4. Unauthorized (401)', Icons.lock_rounded, Colors.red),
-    _DemoItem('5. Server Error (500)', Icons.cloud_off_rounded, Colors.red),
-    _DemoItem('6. Timeout', Icons.timer_off_rounded, Colors.amber),
-    _DemoItem('7. Retry', Icons.replay_rounded, Colors.teal),
-    _DemoItem('8. Upload', Icons.cloud_upload_rounded, Colors.purple),
-    _DemoItem('9. Download', Icons.cloud_download_rounded, Colors.indigo),
-    _DemoItem('10. Progress', Icons.linear_scale_rounded, Colors.cyan),
-    _DemoItem('11. Cookies', Icons.cookie_rounded, Colors.brown),
-    _DemoItem('12. Cache', Icons.storage_rounded, Colors.blueGrey),
-    _DemoItem('13. Proxy', Icons.router_rounded, Colors.deepOrange),
-    _DemoItem('14. SSL', Icons.security_rounded, Colors.green),
-    _DemoItem('15. Cancellation', Icons.cancel_rounded, Colors.pink),
-    _DemoItem('16. Parallel Requests', Icons.sync_alt_rounded, Colors.blue),
-    _DemoItem('17. Sequential Requests', Icons.list_rounded, Colors.teal),
+    _DemoItem('3. PUT Request', Icons.edit_rounded, Colors.lightGreen),
+    _DemoItem('4. PATCH Request', Icons.edit_note_rounded, Colors.lime),
+    _DemoItem('5. DELETE Request', Icons.delete_rounded, Colors.redAccent),
+    _DemoItem('6. Error (400)', Icons.warning_rounded, Colors.orange),
+    _DemoItem('7. Unauthorized (401)', Icons.lock_rounded, Colors.red),
+    _DemoItem('8. Server Error (500)', Icons.cloud_off_rounded, Colors.red),
+    _DemoItem('9. Timeout', Icons.timer_off_rounded, Colors.amber),
+    _DemoItem('10. Network Failure', Icons.wifi_off_rounded, Colors.deepPurple),
+    _DemoItem('11. Retry', Icons.replay_rounded, Colors.teal),
+    _DemoItem('12. Upload', Icons.cloud_upload_rounded, Colors.purple),
+    _DemoItem('13. Download', Icons.cloud_download_rounded, Colors.indigo),
+    _DemoItem('14. Progress', Icons.linear_scale_rounded, Colors.cyan),
+    _DemoItem('15. Cookies', Icons.cookie_rounded, Colors.brown),
+    _DemoItem('16. Cache', Icons.storage_rounded, Colors.blueGrey),
+    _DemoItem('17. Proxy', Icons.router_rounded, Colors.deepOrange),
+    _DemoItem('18. SSL', Icons.security_rounded, Colors.green),
+    _DemoItem('19. Cancellation', Icons.cancel_rounded, Colors.pink),
+    _DemoItem('20. Parallel Requests', Icons.sync_alt_rounded, Colors.blue),
+    _DemoItem('21. Sequential Requests', Icons.list_rounded, Colors.teal),
     _DemoItem(
-        '18. Batch Requests', Icons.batch_prediction_rounded, Colors.orange),
+        '22. Batch Requests', Icons.batch_prediction_rounded, Colors.orange),
     _DemoItem(
-        '19. Duplicate Prevention', Icons.filter_none_rounded, Colors.purple),
-    _DemoItem('20. Interceptors', Icons.layers_rounded, Colors.indigo),
+        '23. Duplicate Prevention', Icons.filter_none_rounded, Colors.purple),
+    _DemoItem('24. Interceptors', Icons.layers_rounded, Colors.indigo),
   ];
 
   static final _screens = <Widget>[
     const BasicGetScreen(),
     const PostScreen(),
+    const PutScreen(),
+    const PatchScreen(),
+    const DeleteScreen(),
     const ErrorScreen(),
     const UnauthorizedScreen(),
     const ServerErrorScreen(),
     const TimeoutScreen(),
+    const NetworkFailureScreen(),
     const RetryScreen(),
     const UploadScreen(),
     const DownloadScreen(),

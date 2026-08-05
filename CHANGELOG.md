@@ -1,16 +1,11 @@
-## 0.1.1
+## 1.0.0
 
 ### ✨ Added
-- Built-in HTTP Client
-- Support for GET, POST, PUT, PATCH, DELETE, HEAD, and OPTIONS requests
-- Automatic API logging for all requests
-- Request cancellation support
-- Retry mechanism
-- Multipart upload support
-- File download support
-- Custom headers and query parameters
-- Request timeout configuration
-- Base URL configuration
+- `ApiStudio.initialize({ apiKey })` — optional automatic API execution logging to the API Studio backend
+- Fire-and-forget remote logging that never blocks, delays or affects user requests
+- Sensitive headers (`Authorization`, `Cookie`, `Set-Cookie`, `X-API-Key`, `Proxy-Authorization`) are stripped before upload
+- Recursive-logging protection: requests to the API Studio logging backend are never logged
+- Single-line console output on log upload success/failure (no bodies, headers or API keys ever printed)
 
 ### 🚀 Improved
 - Improved API Inspector UI
