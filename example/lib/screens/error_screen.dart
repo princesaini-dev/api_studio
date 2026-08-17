@@ -22,10 +22,12 @@ class _ErrorScreenState extends State<ErrorScreen> {
       _isError = false;
     });
     try {
-      await ApiStudioClient.instance.get('/nonexistent-endpoint-that-returns-404');
+      await ApiStudioClient.instance
+          .get('/nonexistent-endpoint-that-returns-404');
     } on BadResponseException catch (e) {
       setState(() {
-        _result = 'BadResponseException caught!\n${e.message}\nStatus: ${e.statusCode}';
+        _result =
+            'BadResponseException caught!\n${e.message}\nStatus: ${e.statusCode}';
         _isError = true;
       });
     } on ApiStudioException catch (e) {
@@ -42,13 +44,18 @@ class _ErrorScreenState extends State<ErrorScreen> {
   Widget build(BuildContext context) {
     return DemoScaffold(
       title: '3. Error (400)',
-      description: 'Calls a non-existent endpoint. Expects a 404 BadResponseException to be thrown and captured.',
+      description:
+          'Calls a non-existent endpoint. Expects a 404 BadResponseException to be thrown and captured.',
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          DemoButton(label: 'Send request to bad endpoint', onPressed: _run, loading: _loading),
+          DemoButton(
+              label: 'Send request to bad endpoint',
+              onPressed: _run,
+              loading: _loading),
           if (_result.isNotEmpty)
-            ResultCard(label: 'Error captured', value: _result, isError: _isError),
+            ResultCard(
+                label: 'Error captured', value: _result, isError: _isError),
         ],
       ),
     );

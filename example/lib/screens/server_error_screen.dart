@@ -22,11 +22,11 @@ class _ServerErrorScreenState extends State<ServerErrorScreen> {
       _isError = false;
     });
     try {
-      await ApiStudioClient.instance
-          .get('https://httpstat.us/500');
+      await ApiStudioClient.instance.get('https://httpstat.us/500');
     } on ServerException catch (e) {
       setState(() {
-        _result = 'ServerException caught!\n${e.message}\nStatus: ${e.statusCode}';
+        _result =
+            'ServerException caught!\n${e.message}\nStatus: ${e.statusCode}';
         _isError = true;
       });
     } on ApiStudioException catch (e) {
@@ -47,7 +47,10 @@ class _ServerErrorScreenState extends State<ServerErrorScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          DemoButton(label: 'Send to 500 endpoint', onPressed: _run, loading: _loading),
+          DemoButton(
+              label: 'Send to 500 endpoint',
+              onPressed: _run,
+              loading: _loading),
           if (_result.isNotEmpty)
             ResultCard(label: 'Result', value: _result, isError: _isError),
         ],

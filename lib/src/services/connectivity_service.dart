@@ -12,8 +12,7 @@ class ConnectivityService {
 
   static const Duration _pollInterval = Duration(seconds: 5);
 
-  final StreamController<bool> _controller =
-      StreamController<bool>.broadcast();
+  final StreamController<bool> _controller = StreamController<bool>.broadcast();
 
   Timer? _timer;
   bool _isConnected = false;

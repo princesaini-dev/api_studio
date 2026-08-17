@@ -15,15 +15,22 @@ class _InterceptorScreenState extends State<InterceptorScreen> {
   final List<_LogEntry> _log = [];
 
   void _addLog(String phase, String msg, {bool isError = false}) {
-    if (mounted) setState(() => _log.add(_LogEntry(phase, msg, isError: isError)));
+    if (mounted)
+      setState(() => _log.add(_LogEntry(phase, msg, isError: isError)));
   }
 
   Future<void> _run() async {
-    setState(() { _loading = true; _log.clear(); });
+    setState(() {
+      _loading = true;
+      _log.clear();
+    });
 
-    final requestInterceptor = _DemoRequestInterceptor(onLog: (m) => _addLog('REQUEST', m));
-    final responseInterceptor = _DemoResponseInterceptor(onLog: (m) => _addLog('RESPONSE', m));
-    final errorInterceptor = _DemoErrorInterceptor(onLog: (m) => _addLog('ERROR', m, isError: true));
+    final requestInterceptor =
+        _DemoRequestInterceptor(onLog: (m) => _addLog('REQUEST', m));
+    final responseInterceptor =
+        _DemoResponseInterceptor(onLog: (m) => _addLog('RESPONSE', m));
+    final errorInterceptor =
+        _DemoErrorInterceptor(onLog: (m) => _addLog('ERROR', m, isError: true));
 
     ApiStudioClient.instance.interceptors
       ..clear()
@@ -51,11 +58,15 @@ class _InterceptorScreenState extends State<InterceptorScreen> {
   Widget build(BuildContext context) {
     return DemoScaffold(
       title: '20. Interceptors',
-      description: 'Attaches request, response, and error interceptors then makes two requests.',
+      description:
+          'Attaches request, response, and error interceptors then makes two requests.',
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          DemoButton(label: 'Run Interceptor Demo', onPressed: _run, loading: _loading),
+          DemoButton(
+              label: 'Run Interceptor Demo',
+              onPressed: _run,
+              loading: _loading),
           const SizedBox(height: 4),
           Expanded(
             child: ListView.builder(
@@ -69,22 +80,28 @@ class _InterceptorScreenState extends State<InterceptorScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: e.isError ? Colors.red.shade100 : Colors.blue.shade100,
+                          color: e.isError
+                              ? Colors.red.shade100
+                              : Colors.blue.shade100,
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(e.phase,
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
-                              color: e.isError ? Colors.red.shade800 : Colors.blue.shade800,
+                              color: e.isError
+                                  ? Colors.red.shade800
+                                  : Colors.blue.shade800,
                             )),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                           child: Text(e.msg,
-                              style: const TextStyle(fontFamily: 'monospace', fontSize: 12))),
+                              style: const TextStyle(
+                                  fontFamily: 'monospace', fontSize: 12))),
                     ],
                   ),
                 );
@@ -123,7 +140,8 @@ class _DemoResponseInterceptor extends ApiInterceptor {
   const _DemoResponseInterceptor({required this.onLog});
 
   @override
-  void onResponse<T>(ApiResponse<T> response, ResponseInterceptorHandler<T> handler) {
+  void onResponse<T>(
+      ApiResponse<T> response, ResponseInterceptorHandler<T> handler) {
     onLog('Status: ${response.statusCode}');
     onLog('Has data: ${response.hasData}');
     handler.next(response);

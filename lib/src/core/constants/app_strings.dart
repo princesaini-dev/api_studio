@@ -152,4 +152,29 @@ class AppStrings {
     if (ms < 1000) return '${ms}ms';
     return '${(ms / 1000).toStringAsFixed(2)}s';
   }
+
+  // File Explorer
+  static const String fileExplorer = 'File Explorer';
+  static const String openFileExplorer = 'Open File Explorer';
+  static const String filesRoot = 'Files';
+  static const String back = 'Back';
+  static const String refresh = 'Refresh';
+  static const String emptyFolder = 'Empty folder';
+  static const String emptyFolderSubtitle = 'No files or subfolders here';
+  static const String folderLoadFailed = 'Unable to load folder contents';
+  static String itemCount(int n) => '$n item${n == 1 ? '' : 's'}';
+
+  // File Actions
+  static const String open = 'Open';
+  static const String download = 'Download';
+  static const String openExternally = 'Open externally';
+  static const String unableToOpenExternally =
+      'Unable to open this file externally.';
+  static const String openExternallySubtitle =
+      'You can download the file and open it manually.';
+  static const String downloadFailed = 'Download failed';
+  static const String downloadSuccess = 'File successfully downloaded.';
+  static const String downloadConfirmation = 'Download file?';
+  static String downloadConfirmationSubtitle(String name) =>
+      'Save $name to your device.';
 }

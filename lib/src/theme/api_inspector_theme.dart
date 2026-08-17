@@ -11,16 +11,20 @@ class ApiInspectorTheme extends InheritedWidget {
   });
 
   static ApiInspectorThemeData of(BuildContext context) {
-    final theme = context.dependOnInheritedWidgetOfExactType<ApiInspectorTheme>();
+    final theme =
+        context.dependOnInheritedWidgetOfExactType<ApiInspectorTheme>();
     if (theme != null) return theme.data;
     final brightness = Theme.of(context).brightness;
     return ApiInspectorThemeData.fromBrightness(brightness);
   }
 
   static ApiInspectorThemeData? maybeOf(BuildContext context) {
-    return context.dependOnInheritedWidgetOfExactType<ApiInspectorTheme>()?.data;
+    return context
+        .dependOnInheritedWidgetOfExactType<ApiInspectorTheme>()
+        ?.data;
   }
 
   @override
-  bool updateShouldNotify(ApiInspectorTheme oldWidget) => data != oldWidget.data;
+  bool updateShouldNotify(ApiInspectorTheme oldWidget) =>
+      data != oldWidget.data;
 }

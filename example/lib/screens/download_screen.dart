@@ -31,8 +31,8 @@ class _DownloadScreenState extends State<DownloadScreen> {
         },
       );
       final bytes = res.data ?? [];
-      setState(() =>
-          _result = 'Status: ${res.statusCode}\nReceived ${bytes.length} bytes');
+      setState(() => _result =
+          'Status: ${res.statusCode}\nReceived ${bytes.length} bytes');
     } on ApiStudioException catch (e) {
       setState(() {
         _result = e.toString();
@@ -47,15 +47,18 @@ class _DownloadScreenState extends State<DownloadScreen> {
   Widget build(BuildContext context) {
     return DemoScaffold(
       title: '9. Download',
-      description: 'Downloads a JSON file as raw bytes with receive-progress tracking.',
+      description:
+          'Downloads a JSON file as raw bytes with receive-progress tracking.',
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          DemoButton(label: 'Download File', onPressed: _run, loading: _loading),
+          DemoButton(
+              label: 'Download File', onPressed: _run, loading: _loading),
           if (_loading || _progress > 0)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: LinearProgressIndicator(value: _progress == 0 ? null : _progress),
+              child: LinearProgressIndicator(
+                  value: _progress == 0 ? null : _progress),
             ),
           if (_result.isNotEmpty)
             ResultCard(label: 'Result', value: _result, isError: _isError),

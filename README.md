@@ -1,249 +1,225 @@
+<h1 align="center">API Studio</h1> <p align="center"> Build • Debug • Monitor • Analyze APIs from a Single Toolkit </p> <p align="center"></p>
 
-<h1 align="center">API Studio</h1>
+🚀 Overview
 
-<p align="center">
-Build • Debug • Monitor • Analyze APIs from a Single Toolkit
-</p>
+API Studio is a modern networking and API debugging toolkit built exclusively for Flutter developers.
 
-<p align="center">
+It brings networking, API inspection, request monitoring, connectivity tracking, debugging utilities, and application file management together in a single developer-focused toolkit.
 
-[![pub package](https://img.shields.io/pub/v/api_studio.svg)](https://pub.dev/packages/api_studio)
-![Flutter](https://img.shields.io/badge/Flutter-3.x-blue.svg)
-![Platform](https://img.shields.io/badge/Platform-Android%20|%20iOS%20|%20Web-success)
-![License](https://img.shields.io/badge/License-MIT-blue)
+Whether you're building a personal project or a production application, API Studio helps you understand, debug, test, and monitor your application's network layer with minimal setup.
 
-</p>
+✨ Why API Studio?
 
----
+API Studio goes beyond simply sending HTTP requests.
 
-## 🚀 Overview
+With API Studio, you can:
 
-API Studio is a modern networking toolkit built exclusively for Flutter developers.
+🌐 Send and manage HTTP requests
+📡 Automatically inspect API traffic
+📊 Monitor requests and responses
+🔍 Debug request and response details
+🌍 Track internet connectivity in real time
+📈 Monitor failed API requests
+📝 Generate cURL commands
+📤 Export API logs
+⚡ Edit and retry requests
+📁 Browse and manage application files
 
-It combines networking, debugging, monitoring, request inspection, connectivity tracking, and developer utilities into one clean and easy-to-use package.
+Everything is designed to work together as a lightweight developer toolkit.
 
-Whether you're building a personal project or a production application, API Studio provides everything needed to understand, debug, and manage your application's network layer.
+🌐 Networking
 
----
+API Studio provides a built-in HTTP client with support for:
 
-## ✨ Why API Studio?
+GET
+POST
+PUT
+PATCH
+DELETE
+HEAD
+OPTIONS
+Multipart Upload
+File Download
+Custom Headers
+Query Parameters
+Authorization
+Request Timeout
+Retry Requests
+Base URL Configuration
+📡 Automatic API Interceptor
 
-Modern applications require much more than simply sending HTTP requests.
-
-API Studio provides an integrated developer experience that allows you to:
-
-- 🌐 Send network requests
-- 📡 Automatically inspect every request
-- 📊 Monitor API traffic
-- 📱 View beautiful request details
-- 🌍 Track internet connectivity
-- 📈 Monitor failed requests in real time
-- 📝 Generate cURL commands instantly
-- 📤 Export request history
-- ⚡ Edit and retry requests
-- 🔍 Analyze request performance
-
-Everything works together with minimal setup.
-
----
-
-## 🌐 Networking
-
-- Built-in HTTP Client
-- GET
-- POST
-- PUT
-- PATCH
-- DELETE
-- Multipart Upload
-- File Download
-- Custom Headers
-- Query Parameters
-- Authorization Support
-- Request Timeout
-- Retry Requests
-- Base URL Configuration
-
----
-
-## 📡 Automatic API Interceptor
-
-Every request is captured automatically.
+API Studio can automatically capture API requests and make them available inside the API Inspector.
 
 Captured information includes:
 
-- URL
-- Method
-- Headers
-- Request Body
-- Query Parameters
-- Response
-- Status Code
-- Response Time
-- Error Details
-- Stack Trace
+URL
+HTTP Method
+Headers
+Request Body
+Query Parameters
+Response
+Status Code
+Response Time
+Error Details
+Stack Trace
 
-No additional configuration required.
+No additional configuration is required for local API inspection.
 
----
+📱 API Inspector
 
-## 📱 API Inspector
-
-Professional API debugging interface with:
-
-- Search Requests
-- Filter by Method
-- Filter by Status
-- Request Details
-- Response Viewer
-- Error Viewer
-- JSON Formatter
-- Copy Request
-- Delete Logs
-- Edit & Retry
-- Generate cURL
-
----
-
-## 🌍 Internet Monitoring
-
-Monitor application connectivity in real time.
+A developer-focused interface for inspecting and debugging API traffic.
 
 Features include:
 
-- Current Internet Status
-- Internet Status Stream
-- Connectivity Listener
-- Live Updates
+🔍 Search Requests
+🔽 Filter by HTTP Method
+🔽 Filter by Status
+📋 Request Details
+📄 Response Viewer
+⚠️ Error Viewer
+📝 JSON Formatter
+📋 Copy Request & Response
+🗑️ Delete Logs
+⚡ Edit & Retry
+📝 Generate cURL
+🌍 Internet Monitoring
 
----
+Monitor your application's internet connectivity in real time.
 
-## 📈 Live Streams
+Features include:
 
-Built-in streams for:
+Current Internet Status
+Internet Status Stream
+Connectivity Listener
+Live Status Updates
 
-- Internet Connectivity
-- Failed API Count
-- Request Updates
+Get the current connectivity status:
 
-Perfect for dashboards and debugging.
+ApiStudio.internetStatus
 
----
+Listen for connectivity changes:
 
-## 📝 cURL Generator
+ApiStudio.internetStream.listen((status) {
+  // Handle connectivity changes
+});
+📈 Live Streams
 
-Generate production-ready cURL commands with one click.
+API Studio provides streams that can be used to build real-time monitoring experiences.
+
+Available streams include:
+
+Internet Connectivity
+Failed API Count
+Request Updates
+
+Example:
+
+ApiStudio.failedApiCountStream.listen((count) {
+  // Update your UI
+});
+📝 cURL Generator
+
+Generate ready-to-use cURL commands directly from intercepted requests.
 
 Useful for:
 
-- Backend Teams
-- QA Testing
-- API Sharing
-- Terminal Testing
+Backend Teams
+QA Testing
+API Sharing
+Terminal Testing
+Debugging
+📤 Export Logs
 
----
+Export API request history for debugging, sharing, or documentation.
 
-## 📤 Export Logs
+Supported formats:
 
-Export request history as:
+JSON
+PDF
+⚡ Edit & Retry
 
-- JSON
-- PDF
+Modify intercepted requests directly from the API Inspector and retry them without changing your application code.
 
----
+You can modify:
 
-## ⚡ Edit & Retry
+Headers
+Query Parameters
+Request Body
 
-Modify intercepted requests directly from the inspector.
+Then execute the request again instantly.
 
-Update:
+📁 File Explorer
 
-- Headers
-- Query Parameters
-- Request Body
+API Studio includes a lightweight File Explorer that allows developers and testers to browse application files and folders directly from the app.
 
-Retry instantly without changing application code.
+Features
+📂 Browse folders and files
+🧭 Breadcrumb navigation
+↗️ Open files using the platform's external/default handler
+⬇️ Download files
+📱 Platform-aware file handling
+⚡ Lightweight implementation with no internal file parsing or file viewer
 
----
+The File Explorer does not attempt to render or parse file contents. File opening is delegated to the underlying platform, allowing users to use the appropriate application or browser handler available on their device.
 
-## 📸 Screenshots
+Open it with:
 
-<p align="center">
-  <img src="assets/ss1.png" width="32%">
-  <img src="assets/ss2.png" width="32%">
-  <img src="assets/ss3.png" width="32%">
-</p>
+ApiStudio.showFileExplorer(context);
+📸 File Explorer
+<p align="center"> <img src="assets/ss6.png" width="48%"> </p>
+📸 Screenshots
+<p align="center"> <img src="assets/ss1.png" width="32%"> <img src="assets/ss2.png" width="32%"> <img src="assets/ss3.png" width="32%"> </p> <p align="center"> <img src="assets/ss4.png" width="32%"> <img src="assets/ss5.png" width="32%"> </p>
+📦 Installation
 
-<p align="center">
-  <img src="assets/ss4.png" width="32%">
-  <img src="assets/ss5.png" width="32%">
-</p>
+Add API Studio to your project:
 
----
-
-## 📦 Installation
-
-Add the package to your project.
-
-```yaml
 dependencies:
   api_studio: ^0.1.1
-```
 
-Install packages.
+Then run:
 
-```bash
 flutter pub get
-```
+🚀 Quick Start
 
----
+Initialize API Studio:
 
-## 🚀 Quick Start
-
-Initialize API Studio.
-
-```dart
 await ApiStudio.initialize();
-```
+📊 Automatic API Logging
 
-### 📊 Automatic API Logging (optional)
+Automatic remote API logging is optional.
 
-Pass an API key to automatically send API execution logs to the API Studio
-backend. This is completely optional — omit it (or pass `null`/an empty
-string) and logging stays fully disabled with zero impact on your app.
+Pass an API key to send API execution logs to the API Studio backend:
 
-```dart
 await ApiStudio.initialize(
-  apiKey: 'YOUR_API_KEY', // Optional
+  apiKey: 'YOUR_API_KEY',
 );
-```
 
-- Logging is fire-and-forget and never blocks or delays your requests.
-- Logging failures are always ignored and never throw.
-- Sensitive headers (`Authorization`, `Cookie`, `Set-Cookie`, `X-API-Key`,
-  `Proxy-Authorization`) are stripped before upload.
-- Your base URL, auth headers, interceptors and retry logic are never
-  touched — the logging request is completely independent.
+Without an API key, remote logging remains disabled.
 
----
+Key characteristics:
 
-## 🌐 HTTP Client
+Fire-and-forget logging
+Never blocks or delays API requests
+Logging failures never throw
+Sensitive headers are stripped before upload
+API configuration and retry logic remain untouched
+Logging requests are isolated from application API traffic
 
-Create a client.
+Sensitive headers removed before upload include:
 
-```dart
+Authorization
+Cookie
+Set-Cookie
+X-API-Key
+Proxy-Authorization
+🌐 HTTP Client
+
+Create an API Studio client:
+
 final client = ApiStudioClient();
-```
-
-GET Request
-
-```dart
+GET
 final response = await client.get("/posts");
-```
-
-POST Request
-
-```dart
+POST
 await client.post(
   "/login",
   data: {
@@ -251,101 +227,31 @@ await client.post(
     "password": "123456",
   },
 );
-```
-
-PUT Request
-
-```dart
+PUT
 await client.put("/users/1");
-```
-
-DELETE Request
-
-```dart
+DELETE
 await client.delete("/users/1");
-```
 
-Every request is automatically available inside the API Inspector.
+Requests made through the client are automatically available in the API Inspector.
 
----
-
-## 📱 Open API Inspector
-
-```dart
+📱 Open API Inspector
 ApiInspector.show(context);
-```
 
-Inspect every request in real time.
+Inspect API requests and responses in real time.
 
----
-
-## 🌍 Internet Connectivity
-
-Current connectivity status.
-
-```dart
-ApiStudio.internetStatus
-```
-
-Listen continuously.
-
-```dart
-ApiStudio.internetStream.listen((status) {
-
-});
-```
-
----
-
-## 📈 Failed API Stream
-
-```dart
-ApiStudio.failedApiCountStream.listen((count) {
-
-});
-```
-
-Perfect for dashboards and monitoring widgets.
-
----
-
-## ✅ Supported HTTP Methods
-
-- GET
-- POST
-- PUT
-- PATCH
-- DELETE
-- HEAD
-- OPTIONS
-
----
-
-## 🎯 Features
-
-- Built-in HTTP Client
-- Automatic API Interceptor
-- API Inspector UI
-- Request & Response Viewer
-- Error Viewer
-- JSON Formatter
-- Edit & Retry
-- cURL Generator
-- Internet Monitoring
-- Live Internet Stream
-- Failed API Stream
-- Export Logs
-
----
-
-## 📄 License
+🎯 Features at a Glance
+Feature	Description
+🌐 HTTP Client	Make API requests directly from Flutter
+📡 API Interceptor	Automatically capture API traffic
+📱 API Inspector	Debug requests and responses
+⚡ Edit & Retry	Modify and retry intercepted requests
+📝 cURL Generator	Generate ready-to-use cURL commands
+🌍 Connectivity	Monitor internet status in real time
+📈 Live Streams	React to API and connectivity changes
+📤 Export Logs	Export request history as JSON/PDF
+📁 File Explorer	Browse, open and download application files
+📄 License
 
 MIT License
 
----
-
-<p align="center">
-
-Made with ❤️ for the Flutter Community
-
-</p>
+<p align="center"> Made with ❤️ for the Flutter Community </p>

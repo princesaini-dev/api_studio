@@ -23,10 +23,12 @@ class _CacheScreenState extends State<CacheScreen> {
     try {
       await ApiStudioClient.instance.get<Map<String, dynamic>>(
         '/posts/1',
-        cachePolicy: const CachePolicy(enabled: true, ttl: Duration(minutes: 2)),
+        cachePolicy:
+            const CachePolicy(enabled: true, ttl: Duration(minutes: 2)),
       );
       sw.stop();
-      setState(() => _log.add('✓ Network response in ${sw.elapsedMilliseconds}ms (cached)'));
+      setState(() => _log
+          .add('✓ Network response in ${sw.elapsedMilliseconds}ms (cached)'));
     } on ApiStudioException catch (e) {
       setState(() => _log.add('✗ Error: $e'));
     } finally {
@@ -43,7 +45,8 @@ class _CacheScreenState extends State<CacheScreen> {
     try {
       await ApiStudioClient.instance.get<Map<String, dynamic>>(
         '/posts/1',
-        cachePolicy: const CachePolicy(enabled: true, ttl: Duration(minutes: 2)),
+        cachePolicy:
+            const CachePolicy(enabled: true, ttl: Duration(minutes: 2)),
       );
       sw.stop();
       setState(() => _log.add('✓ Cache hit in ${sw.elapsedMilliseconds}ms'));
@@ -67,7 +70,8 @@ class _CacheScreenState extends State<CacheScreen> {
             enabled: true, ttl: Duration(minutes: 2), forceRefresh: true),
       );
       sw.stop();
-      setState(() => _log.add('✓ Fresh network response in ${sw.elapsedMilliseconds}ms'));
+      setState(() =>
+          _log.add('✓ Fresh network response in ${sw.elapsedMilliseconds}ms'));
     } on ApiStudioException catch (e) {
       setState(() => _log.add('✗ Error: $e'));
     } finally {
@@ -79,7 +83,8 @@ class _CacheScreenState extends State<CacheScreen> {
   Widget build(BuildContext context) {
     return DemoScaffold(
       title: '12. Cache',
-      description: 'First request goes to network. Second hits cache. Force refresh bypasses it.',
+      description:
+          'First request goes to network. Second hits cache. Force refresh bypasses it.',
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -109,7 +114,8 @@ class _CacheScreenState extends State<CacheScreen> {
               itemBuilder: (_, i) => Padding(
                 padding: const EdgeInsets.symmetric(vertical: 2),
                 child: Text(_log[i],
-                    style: const TextStyle(fontFamily: 'monospace', fontSize: 13)),
+                    style:
+                        const TextStyle(fontFamily: 'monospace', fontSize: 13)),
               ),
             ),
           ),

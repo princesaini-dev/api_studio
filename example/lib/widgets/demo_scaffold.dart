@@ -102,7 +102,8 @@ class DemoButton extends StatelessWidget {
             ? const SizedBox(
                 width: 16,
                 height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: Colors.white),
               )
             : const Icon(Icons.play_arrow_rounded),
         label: Text(label),

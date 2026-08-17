@@ -15,7 +15,10 @@ class _ParallelScreenState extends State<ParallelScreen> {
   final List<String> _results = [];
 
   Future<void> _run() async {
-    setState(() { _loading = true; _results.clear(); });
+    setState(() {
+      _loading = true;
+      _results.clear();
+    });
     final sw = Stopwatch()..start();
     try {
       final client = ApiStudioClient.instance;
@@ -48,11 +51,16 @@ class _ParallelScreenState extends State<ParallelScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          DemoButton(label: 'Fire 5 Parallel Requests', onPressed: _run, loading: _loading),
+          DemoButton(
+              label: 'Fire 5 Parallel Requests',
+              onPressed: _run,
+              loading: _loading),
           ..._results.map((r) => Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
                 child: Text('• $r',
-                    style: const TextStyle(fontFamily: 'monospace', fontSize: 13)),
+                    style:
+                        const TextStyle(fontFamily: 'monospace', fontSize: 13)),
               )),
         ],
       ),

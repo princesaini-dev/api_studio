@@ -40,7 +40,8 @@ class _CookiesScreenState extends State<CookiesScreen> {
   Widget build(BuildContext context) {
     return DemoScaffold(
       title: '11. Cookies',
-      description: 'Demonstrates in-memory cookie jar: save, read, delete, and clear.',
+      description:
+          'Demonstrates in-memory cookie jar: save, read, delete, and clear.',
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -52,8 +53,10 @@ class _CookiesScreenState extends State<CookiesScreen> {
               children: [
                 FilledButton(onPressed: _save, child: const Text('Save')),
                 FilledButton.tonal(onPressed: _read, child: const Text('Read')),
-                OutlinedButton(onPressed: _delete, child: const Text('Delete session_id')),
-                OutlinedButton(onPressed: _clear, child: const Text('Clear All')),
+                OutlinedButton(
+                    onPressed: _delete, child: const Text('Delete session_id')),
+                OutlinedButton(
+                    onPressed: _clear, child: const Text('Clear All')),
               ],
             ),
           ),
@@ -65,7 +68,8 @@ class _CookiesScreenState extends State<CookiesScreen> {
               itemBuilder: (_, i) => Padding(
                 padding: const EdgeInsets.symmetric(vertical: 2),
                 child: Text('• ${_log[i]}',
-                    style: const TextStyle(fontFamily: 'monospace', fontSize: 13)),
+                    style:
+                        const TextStyle(fontFamily: 'monospace', fontSize: 13)),
               ),
             ),
           ),

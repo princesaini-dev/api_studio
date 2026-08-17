@@ -6,7 +6,8 @@ import '../../../core/utils/curl_generator.dart';
 import 'inspector_detail_event.dart';
 import 'inspector_detail_state.dart';
 
-class InspectorDetailBloc extends Bloc<InspectorDetailEvent, InspectorDetailState> {
+class InspectorDetailBloc
+    extends Bloc<InspectorDetailEvent, InspectorDetailState> {
   final ApiLogRepository repository;
   final DeleteLogUseCase deleteLogUseCase;
 
@@ -20,25 +21,30 @@ class InspectorDetailBloc extends Bloc<InspectorDetailEvent, InspectorDetailStat
     on<DeleteDetailLogEvent>(_onDelete);
   }
 
-  Future<void> _onLoad(LoadDetailEvent event, Emitter<InspectorDetailState> emit) async {
+  Future<void> _onLoad(
+      LoadDetailEvent event, Emitter<InspectorDetailState> emit) async {
     emit(state.copyWith(status: DetailStatus.loading));
     try {
       final log = await repository.getLogById(event.logId);
       if (log == null) {
-        emit(state.copyWith(status: DetailStatus.failure, errorMessage: 'Log not found'));
+        emit(state.copyWith(
+            status: DetailStatus.failure, errorMessage: 'Log not found'));
         return;
       }
       emit(state.copyWith(status: DetailStatus.success, log: log));
     } catch (e) {
-      emit(state.copyWith(status: DetailStatus.failure, errorMessage: e.toString()));
+      emit(state.copyWith(
+          status: DetailStatus.failure, errorMessage: e.toString()));
     }
   }
 
-  void _onChangeTab(ChangeDetailTabEvent event, Emitter<InspectorDetailState> emit) {
+  void _onChangeTab(
+      ChangeDetailTabEvent event, Emitter<InspectorDetailState> emit) {
     emit(state.copyWith(selectedTabIndex: event.tabIndex));
   }
 
-  Future<void> _onCopyCurl(CopyCurlEvent event, Emitter<InspectorDetailState> emit) async {
+  Future<void> _onCopyCurl(
+      CopyCurlEvent event, Emitter<InspectorDetailState> emit) async {
     if (state.log == null) return;
     final curl = CurlGenerator.generate(state.log!);
     await Clipboard.setData(ClipboardData(text: curl));
@@ -47,7 +53,8 @@ class InspectorDetailBloc extends Bloc<InspectorDetailEvent, InspectorDetailStat
     emit(state.copyWith(curlCopied: false));
   }
 
-  Future<void> _onDelete(DeleteDetailLogEvent event, Emitter<InspectorDetailState> emit) async {
+  Future<void> _onDelete(
+      DeleteDetailLogEvent event, Emitter<InspectorDetailState> emit) async {
     if (state.log == null) return;
     await deleteLogUseCase(state.log!.id);
     emit(state.copyWith(status: DetailStatus.deleted));

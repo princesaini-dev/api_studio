@@ -22,8 +22,8 @@ class _BasicGetScreenState extends State<BasicGetScreen> {
       _isError = false;
     });
     try {
-      final res = await ApiStudioClient.instance
-          .get<Map<String, dynamic>>('/posts/1');
+      final res =
+          await ApiStudioClient.instance.get<Map<String, dynamic>>('/posts/1');
       setState(() => _result = 'Status: ${res.statusCode}\n\n${res.data}');
     } on ApiStudioException catch (e) {
       setState(() {
@@ -43,7 +43,8 @@ class _BasicGetScreenState extends State<BasicGetScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          DemoButton(label: 'Send GET /posts/1', onPressed: _run, loading: _loading),
+          DemoButton(
+              label: 'Send GET /posts/1', onPressed: _run, loading: _loading),
           if (_result.isNotEmpty)
             ResultCard(label: 'Response', value: _result, isError: _isError),
         ],

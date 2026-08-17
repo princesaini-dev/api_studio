@@ -15,6 +15,7 @@ import '../blocs/inspector_list/inspector_list_state.dart';
 import '../widgets/filter_chip_bar.dart';
 import '../widgets/log_card.dart';
 import '../widgets/search_bar_widget.dart';
+import 'file_explorer_screen.dart';
 import 'inspector_detail_screen.dart';
 
 class InspectorListScreen extends StatelessWidget {
@@ -98,6 +99,13 @@ class _InspectorListView extends StatelessWidget {
         ],
       ),
       actions: [
+        IconButton(
+          icon: Icon(Icons.folder_rounded,
+              color: theme.textSecondaryColor, size: Dimensions.iconMd),
+          tooltip: AppStrings.openFileExplorer,
+          onPressed: () =>
+              Navigator.of(context).push(FileExplorerScreen.route()),
+        ),
         BlocBuilder<InspectorListBloc, InspectorListState>(
           buildWhen: (p, c) => p.logs.length != c.logs.length,
           builder: (context, state) => state.logs.isNotEmpty

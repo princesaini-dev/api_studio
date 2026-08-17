@@ -33,7 +33,8 @@ class MethodBadge extends StatelessWidget {
       ),
       child: Text(
         method.name.toUpperCase(),
-        style: AppTextStyles.labelLarge.copyWith(color: color, fontSize: fontSize ?? 11),
+        style: AppTextStyles.labelLarge
+            .copyWith(color: color, fontSize: fontSize ?? 11),
       ),
     );
   }

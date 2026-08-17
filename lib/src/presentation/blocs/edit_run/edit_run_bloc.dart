@@ -41,7 +41,8 @@ class EditRunBloc extends Bloc<EditRunEvent, EditRunState> {
     emit(state.copyWith(headers: event.headers));
   }
 
-  void _onUpdateQueryParams(UpdateQueryParamsEvent event, Emitter<EditRunState> emit) {
+  void _onUpdateQueryParams(
+      UpdateQueryParamsEvent event, Emitter<EditRunState> emit) {
     emit(state.copyWith(queryParams: event.params));
   }
 
@@ -64,7 +65,8 @@ class EditRunBloc extends Bloc<EditRunEvent, EditRunState> {
       ));
       emit(state.copyWith(status: EditRunStatus.success, resultLog: result));
     } catch (e) {
-      emit(state.copyWith(status: EditRunStatus.failure, errorMessage: e.toString()));
+      emit(state.copyWith(
+          status: EditRunStatus.failure, errorMessage: e.toString()));
     }
   }
 }
