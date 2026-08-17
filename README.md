@@ -174,7 +174,7 @@ ApiStudio.showFileExplorer(context);
 Add API Studio to your project:
 
 dependencies:
-  api_studio: ^0.1.1
+  api_studio: ^1.0.1
 
 Then run:
 

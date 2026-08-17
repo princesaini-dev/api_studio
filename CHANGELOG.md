@@ -1,4 +1,4 @@
-1.0.0
+1.0.1
 ✨ Added
 Added File Explorer for browsing application files and folders.
 Added external file opening through the underlying platform.
