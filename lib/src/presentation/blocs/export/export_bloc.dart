@@ -11,23 +11,29 @@ class ExportBloc extends Bloc<ExportEvent, ExportState> {
     on<ExportAsTxtEvent>(_onExportTxt);
   }
 
-  Future<void> _onExportJson(ExportAsJsonEvent event, Emitter<ExportState> emit) async {
+  Future<void> _onExportJson(
+      ExportAsJsonEvent event, Emitter<ExportState> emit) async {
     emit(state.copyWith(status: ExportStatus.exporting));
     try {
       final path = await exportService.exportAsJson();
-      emit(state.copyWith(status: ExportStatus.success, exportedFilePath: path));
+      emit(
+          state.copyWith(status: ExportStatus.success, exportedFilePath: path));
     } catch (e) {
-      emit(state.copyWith(status: ExportStatus.failure, errorMessage: e.toString()));
+      emit(state.copyWith(
+          status: ExportStatus.failure, errorMessage: e.toString()));
     }
   }
 
-  Future<void> _onExportTxt(ExportAsTxtEvent event, Emitter<ExportState> emit) async {
+  Future<void> _onExportTxt(
+      ExportAsTxtEvent event, Emitter<ExportState> emit) async {
     emit(state.copyWith(status: ExportStatus.exporting));
     try {
       final path = await exportService.exportAsTxt();
-      emit(state.copyWith(status: ExportStatus.success, exportedFilePath: path));
+      emit(
+          state.copyWith(status: ExportStatus.success, exportedFilePath: path));
     } catch (e) {
-      emit(state.copyWith(status: ExportStatus.failure, errorMessage: e.toString()));
+      emit(state.copyWith(
+          status: ExportStatus.failure, errorMessage: e.toString()));
     }
   }
 }

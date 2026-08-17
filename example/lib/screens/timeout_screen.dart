@@ -47,11 +47,13 @@ class _TimeoutScreenState extends State<TimeoutScreen> {
   Widget build(BuildContext context) {
     return DemoScaffold(
       title: '6. Timeout',
-      description: 'Sends a request with a 2s timeout to a 5s delayed endpoint.',
+      description:
+          'Sends a request with a 2s timeout to a 5s delayed endpoint.',
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          DemoButton(label: 'Trigger Timeout', onPressed: _run, loading: _loading),
+          DemoButton(
+              label: 'Trigger Timeout', onPressed: _run, loading: _loading),
           if (_result.isNotEmpty)
             ResultCard(label: 'Result', value: _result, isError: _isError),
         ],

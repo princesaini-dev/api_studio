@@ -15,11 +15,17 @@ class _DuplicateScreenState extends State<DuplicateScreen> {
   final List<String> _log = [];
 
   Future<void> _runAllow() => _runWith(DuplicateRequestStrategy.allow, 'allow');
-  Future<void> _runIgnore() => _runWith(DuplicateRequestStrategy.ignore, 'ignore');
-  Future<void> _runCancel() => _runWith(DuplicateRequestStrategy.cancelPrevious, 'cancelPrevious');
+  Future<void> _runIgnore() =>
+      _runWith(DuplicateRequestStrategy.ignore, 'ignore');
+  Future<void> _runCancel() =>
+      _runWith(DuplicateRequestStrategy.cancelPrevious, 'cancelPrevious');
 
   Future<void> _runWith(DuplicateRequestStrategy strategy, String name) async {
-    setState(() { _loading = true; _log.clear(); _log.add('Strategy: $name'); });
+    setState(() {
+      _loading = true;
+      _log.clear();
+      _log.add('Strategy: $name');
+    });
 
     final config = ClientConfig(
       baseUrl: 'https://jsonplaceholder.typicode.com',
@@ -34,20 +40,26 @@ class _DuplicateScreenState extends State<DuplicateScreen> {
       3,
       (i) => client
           .get<Map<String, dynamic>>('/posts/1')
-          .then((r) => setState(() => _log.add('Request ${i + 1}: ${r.statusCode}')))
-          .catchError((e) => setState(() => _log.add('Request ${i + 1}: ${e.runtimeType}'))),
+          .then((r) =>
+              setState(() => _log.add('Request ${i + 1}: ${r.statusCode}')))
+          .catchError((e) =>
+              setState(() => _log.add('Request ${i + 1}: ${e.runtimeType}'))),
     );
 
     await Future.wait(futures);
     ApiStudio.initClient(baseUrl: 'https://jsonplaceholder.typicode.com');
-    setState(() { _loading = false; _log.add('Done.'); });
+    setState(() {
+      _loading = false;
+      _log.add('Done.');
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return DemoScaffold(
       title: '19. Duplicate Prevention',
-      description: 'Fires 3 identical requests simultaneously with different strategies.',
+      description:
+          'Fires 3 identical requests simultaneously with different strategies.',
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -71,9 +83,11 @@ class _DuplicateScreenState extends State<DuplicateScreen> {
           ),
           const Divider(),
           ..._log.map((l) => Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
                 child: Text('• $l',
-                    style: const TextStyle(fontFamily: 'monospace', fontSize: 13)),
+                    style:
+                        const TextStyle(fontFamily: 'monospace', fontSize: 13)),
               )),
         ],
       ),

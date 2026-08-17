@@ -10,8 +10,7 @@ class FailedApiCountService {
 
   static FailedApiCountService get instance => _instance;
 
-  final StreamController<int> _controller =
-      StreamController<int>.broadcast();
+  final StreamController<int> _controller = StreamController<int>.broadcast();
 
   StreamSubscription<List<ApiLogEntity>>? _subscription;
   bool _started = false;

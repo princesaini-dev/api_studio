@@ -44,11 +44,15 @@ class _NetworkFailureScreenState extends State<NetworkFailureScreen> {
   Widget build(BuildContext context) {
     return DemoScaffold(
       title: 'Network Failure',
-      description: 'Requests an unresolvable host to trigger a DNS/network failure.',
+      description:
+          'Requests an unresolvable host to trigger a DNS/network failure.',
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          DemoButton(label: 'Trigger Network Failure', onPressed: _run, loading: _loading),
+          DemoButton(
+              label: 'Trigger Network Failure',
+              onPressed: _run,
+              loading: _loading),
           if (_result.isNotEmpty)
             ResultCard(label: 'Result', value: _result, isError: _isError),
         ],

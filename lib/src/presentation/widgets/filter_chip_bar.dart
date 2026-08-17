@@ -35,7 +35,8 @@ class FilterChipBar extends StatelessWidget {
             label: 'Method',
             value: selectedMethod,
             items: MethodFilter.values,
-            labelFor: (v) => v == MethodFilter.all ? 'All Methods' : v.name.toUpperCase(),
+            labelFor: (v) =>
+                v == MethodFilter.all ? 'All Methods' : v.name.toUpperCase(),
             onChanged: onMethodChanged,
           ),
           const SizedBox(width: 8),
@@ -92,7 +93,8 @@ class FilterChipBar extends StatelessWidget {
         value: value,
         isDense: true,
         underline: const SizedBox(),
-        style: AppTextStyles.labelMedium.copyWith(color: theme.textPrimaryColor),
+        style:
+            AppTextStyles.labelMedium.copyWith(color: theme.textPrimaryColor),
         dropdownColor: theme.cardColor,
         items: items
             .map((v) => DropdownMenuItem<T>(

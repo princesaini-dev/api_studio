@@ -35,5 +35,6 @@ class InspectorDetailState extends Equatable {
   }
 
   @override
-  List<Object?> get props => [status, log, selectedTabIndex, errorMessage, curlCopied];
+  List<Object?> get props =>
+      [status, log, selectedTabIndex, errorMessage, curlCopied];
 }

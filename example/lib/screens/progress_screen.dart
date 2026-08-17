@@ -56,19 +56,25 @@ class _ProgressScreenState extends State<ProgressScreen> {
   Widget build(BuildContext context) {
     return DemoScaffold(
       title: '10. Progress',
-      description: 'Demonstrates onSendProgress and onReceiveProgress callbacks.',
+      description:
+          'Demonstrates onSendProgress and onReceiveProgress callbacks.',
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            DemoButton(label: 'Start Progress Demo', onPressed: _run, loading: _loading),
+            DemoButton(
+                label: 'Start Progress Demo',
+                onPressed: _run,
+                loading: _loading),
             const SizedBox(height: 16),
-            const Text('Upload Progress', style: TextStyle(fontWeight: FontWeight.w600)),
+            const Text('Upload Progress',
+                style: TextStyle(fontWeight: FontWeight.w600)),
             const SizedBox(height: 4),
             LinearProgressIndicator(value: _uploadProgress),
             const SizedBox(height: 12),
-            const Text('Download Progress', style: TextStyle(fontWeight: FontWeight.w600)),
+            const Text('Download Progress',
+                style: TextStyle(fontWeight: FontWeight.w600)),
             const SizedBox(height: 4),
             LinearProgressIndicator(value: _downloadProgress),
             if (_result.isNotEmpty) ...[

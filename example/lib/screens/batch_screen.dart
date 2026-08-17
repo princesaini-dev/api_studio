@@ -15,7 +15,10 @@ class _BatchScreenState extends State<BatchScreen> {
   final List<String> _results = [];
 
   Future<void> _run() async {
-    setState(() { _loading = true; _results.clear(); });
+    setState(() {
+      _loading = true;
+      _results.clear();
+    });
     final client = ApiStudioClient.instance;
 
     final batch = [
@@ -29,7 +32,8 @@ class _BatchScreenState extends State<BatchScreen> {
     ];
 
     try {
-      setState(() => _results.add('Executing batch of ${batch.length} requests...'));
+      setState(
+          () => _results.add('Executing batch of ${batch.length} requests...'));
       final results = await client.parallel(batch);
       for (final r in results) {
         setState(() =>
@@ -47,15 +51,19 @@ class _BatchScreenState extends State<BatchScreen> {
   Widget build(BuildContext context) {
     return DemoScaffold(
       title: '18. Batch Requests',
-      description: 'Fires a batch of 7 requests simultaneously and shows all results.',
+      description:
+          'Fires a batch of 7 requests simultaneously and shows all results.',
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          DemoButton(label: 'Execute Batch', onPressed: _run, loading: _loading),
+          DemoButton(
+              label: 'Execute Batch', onPressed: _run, loading: _loading),
           ..._results.map((r) => Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
                 child: Text('• $r',
-                    style: const TextStyle(fontFamily: 'monospace', fontSize: 13)),
+                    style:
+                        const TextStyle(fontFamily: 'monospace', fontSize: 13)),
               )),
         ],
       ),

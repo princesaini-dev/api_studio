@@ -28,7 +28,14 @@ class _UploadScreenState extends State<UploadScreen> {
     try {
       // Simulate a small PNG (1x1 transparent pixel) as upload payload
       final fakeImageBytes = Uint8List.fromList([
-        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+        0x89,
+        0x50,
+        0x4E,
+        0x47,
+        0x0D,
+        0x0A,
+        0x1A,
+        0x0A,
       ]);
 
       final res = await ApiStudioClient.instance.upload<Map<String, dynamic>>(
@@ -61,7 +68,8 @@ class _UploadScreenState extends State<UploadScreen> {
   Widget build(BuildContext context) {
     return DemoScaffold(
       title: '8. Upload',
-      description: 'Uploads a fake image file via multipart/form-data to httpbin.org/post.',
+      description:
+          'Uploads a fake image file via multipart/form-data to httpbin.org/post.',
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

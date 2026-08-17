@@ -30,8 +30,7 @@ class _PostScreenState extends State<PostScreen> {
           'userId': 1,
         },
       );
-      setState(() =>
-          _result = 'Status: ${res.statusCode}\n\n${res.data}');
+      setState(() => _result = 'Status: ${res.statusCode}\n\n${res.data}');
     } on ApiStudioException catch (e) {
       setState(() {
         _result = e.toString();
@@ -46,11 +45,13 @@ class _PostScreenState extends State<PostScreen> {
   Widget build(BuildContext context) {
     return DemoScaffold(
       title: '2. POST Request',
-      description: 'POST /posts → expects 201 Created with the new post echoed back.',
+      description:
+          'POST /posts → expects 201 Created with the new post echoed back.',
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          DemoButton(label: 'Send POST /posts', onPressed: _run, loading: _loading),
+          DemoButton(
+              label: 'Send POST /posts', onPressed: _run, loading: _loading),
           if (_result.isNotEmpty)
             ResultCard(label: 'Response', value: _result, isError: _isError),
         ],

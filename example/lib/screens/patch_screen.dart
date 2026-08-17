@@ -41,11 +41,13 @@ class _PatchScreenState extends State<PatchScreen> {
   Widget build(BuildContext context) {
     return DemoScaffold(
       title: 'PATCH Request',
-      description: 'PATCH /posts/1 → expects 200 OK with a partially updated post echoed back.',
+      description:
+          'PATCH /posts/1 → expects 200 OK with a partially updated post echoed back.',
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          DemoButton(label: 'Send PATCH /posts/1', onPressed: _run, loading: _loading),
+          DemoButton(
+              label: 'Send PATCH /posts/1', onPressed: _run, loading: _loading),
           if (_result.isNotEmpty)
             ResultCard(label: 'Response', value: _result, isError: _isError),
         ],

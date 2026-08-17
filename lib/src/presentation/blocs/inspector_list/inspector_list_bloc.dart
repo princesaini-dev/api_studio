@@ -48,7 +48,8 @@ class InspectorListBloc extends Bloc<InspectorListEvent, InspectorListState> {
     );
   }
 
-  Future<void> _onLoad(LoadLogsEvent event, Emitter<InspectorListState> emit) async {
+  Future<void> _onLoad(
+      LoadLogsEvent event, Emitter<InspectorListState> emit) async {
     emit(state.copyWith(status: InspectorListStatus.loading, currentPage: 0));
     try {
       final logs = await getLogsUseCase(_buildParams(state));
@@ -59,11 +60,13 @@ class InspectorListBloc extends Bloc<InspectorListEvent, InspectorListState> {
         hasReachedMax: logs.length < AppConstants.defaultPageSize,
       ));
     } catch (e) {
-      emit(state.copyWith(status: InspectorListStatus.failure, errorMessage: e.toString()));
+      emit(state.copyWith(
+          status: InspectorListStatus.failure, errorMessage: e.toString()));
     }
   }
 
-  Future<void> _onLoadMore(LoadMoreLogsEvent event, Emitter<InspectorListState> emit) async {
+  Future<void> _onLoadMore(
+      LoadMoreLogsEvent event, Emitter<InspectorListState> emit) async {
     if (state.hasReachedMax) return;
     try {
       final nextPage = state.currentPage + 1;
@@ -76,38 +79,45 @@ class InspectorListBloc extends Bloc<InspectorListEvent, InspectorListState> {
     } catch (_) {}
   }
 
-  Future<void> _onSearch(SearchLogsEvent event, Emitter<InspectorListState> emit) async {
+  Future<void> _onSearch(
+      SearchLogsEvent event, Emitter<InspectorListState> emit) async {
     emit(state.copyWith(searchQuery: event.query, currentPage: 0));
     add(const LoadLogsEvent());
   }
 
-  Future<void> _onFilterMethod(FilterMethodEvent event, Emitter<InspectorListState> emit) async {
+  Future<void> _onFilterMethod(
+      FilterMethodEvent event, Emitter<InspectorListState> emit) async {
     emit(state.copyWith(methodFilter: event.filter, currentPage: 0));
     add(const LoadLogsEvent());
   }
 
-  Future<void> _onFilterStatus(FilterStatusEvent event, Emitter<InspectorListState> emit) async {
+  Future<void> _onFilterStatus(
+      FilterStatusEvent event, Emitter<InspectorListState> emit) async {
     emit(state.copyWith(statusFilter: event.filter, currentPage: 0));
     add(const LoadLogsEvent());
   }
 
-  Future<void> _onSort(SortLogsEvent event, Emitter<InspectorListState> emit) async {
+  Future<void> _onSort(
+      SortLogsEvent event, Emitter<InspectorListState> emit) async {
     emit(state.copyWith(sortOrder: event.order, currentPage: 0));
     add(const LoadLogsEvent());
   }
 
-  Future<void> _onDelete(DeleteLogEvent event, Emitter<InspectorListState> emit) async {
+  Future<void> _onDelete(
+      DeleteLogEvent event, Emitter<InspectorListState> emit) async {
     await deleteLogUseCase(event.id);
     final updated = state.logs.where((l) => l.id != event.id).toList();
     emit(state.copyWith(logs: updated));
   }
 
-  Future<void> _onClearAll(ClearAllLogsEvent event, Emitter<InspectorListState> emit) async {
+  Future<void> _onClearAll(
+      ClearAllLogsEvent event, Emitter<InspectorListState> emit) async {
     await clearLogsUseCase(const NoParams());
     emit(state.copyWith(logs: [], hasReachedMax: true));
   }
 
-  Future<void> _onLogsUpdated(LogsUpdatedEvent event, Emitter<InspectorListState> emit) async {
+  Future<void> _onLogsUpdated(
+      LogsUpdatedEvent event, Emitter<InspectorListState> emit) async {
     if (state.status == InspectorListStatus.success) {
       add(const LoadLogsEvent(refresh: true));
     }

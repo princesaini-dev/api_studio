@@ -43,7 +43,10 @@ class _DeleteScreenState extends State<DeleteScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          DemoButton(label: 'Send DELETE /posts/1', onPressed: _run, loading: _loading),
+          DemoButton(
+              label: 'Send DELETE /posts/1',
+              onPressed: _run,
+              loading: _loading),
           if (_result.isNotEmpty)
             ResultCard(label: 'Response', value: _result, isError: _isError),
         ],

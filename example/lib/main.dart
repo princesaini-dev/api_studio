@@ -157,7 +157,9 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
+        backgroundColor: Colors.white,
         title: const Text('API Studio Demo'),
         actions: [
           FailedApiBadge(count: _failedApiCount),
@@ -165,6 +167,11 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: const Icon(Icons.bug_report_rounded),
             tooltip: 'Open Inspector',
             onPressed: () => ApiStudio.show(context),
+          ),
+          IconButton(
+            icon: const Icon(Icons.folder_rounded),
+            tooltip: 'Open File Explorer',
+            onPressed: () => ApiStudio.showFileExplorer(context),
           ),
         ],
       ),
@@ -175,17 +182,34 @@ class _HomeScreenState extends State<HomeScreen> {
         itemBuilder: (context, i) {
           final item = _demos[i];
           return Card(
+            elevation: 1,
+            color: Colors.white,
+            margin: const EdgeInsets.symmetric(vertical: 4),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: ListTile(
               leading: CircleAvatar(
                 backgroundColor: item.color.withValues(alpha: 0.15),
-                child: Icon(item.icon, color: item.color, size: 20),
+                child: Icon(
+                  item.icon,
+                  color: item.color,
+                  size: 16,
+                ),
               ),
-              title: Text(item.title,
-                  style: const TextStyle(fontWeight: FontWeight.w600)),
+              title: Text(
+                item.title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w500,
+                  fontSize: 14,
+                ),
+              ),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.push(
                 context,
-                MaterialPageRoute<void>(builder: (_) => _screens[i]),
+                MaterialPageRoute<void>(
+                  builder: (_) => _screens[i],
+                ),
               ),
             ),
           );

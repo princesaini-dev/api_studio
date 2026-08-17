@@ -3,6 +3,7 @@ export 'src/core/constants/hive_constants.dart';
 export 'src/core/errors/failures.dart';
 export 'src/core/errors/exceptions.dart' hide NetworkException;
 export 'src/core/utils/curl_generator.dart';
+export 'src/core/utils/file_type_helper.dart';
 
 export 'src/domain/entities/api_log_entity.dart';
 export 'src/domain/repositories/api_log_repository.dart';
@@ -12,9 +13,15 @@ export 'src/domain/usecases/delete_log_usecase.dart';
 export 'src/domain/usecases/clear_logs_usecase.dart';
 export 'src/domain/usecases/run_request_usecase.dart';
 
+export 'src/domain/entities/file_explorer_entry.dart';
+export 'src/domain/entities/breadcrumb.dart';
+export 'src/domain/repositories/file_explorer_repository.dart';
+export 'src/domain/usecases/list_directory_usecase.dart';
+
 export 'src/presentation/screens/inspector_list_screen.dart';
 export 'src/presentation/screens/inspector_detail_screen.dart';
 export 'src/presentation/screens/edit_run_screen.dart';
+export 'src/presentation/screens/file_explorer_screen.dart';
 
 export 'src/theme/api_inspector_theme.dart';
 export 'src/theme/api_inspector_theme_data.dart';

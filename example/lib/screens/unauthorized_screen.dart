@@ -28,7 +28,8 @@ class _UnauthorizedScreenState extends State<UnauthorizedScreen> {
           headers: {'Accept': 'application/json'});
     } on UnauthorizedException catch (e) {
       setState(() {
-        _result = 'UnauthorizedException caught!\n${e.message}\nStatus: ${e.statusCode}';
+        _result =
+            'UnauthorizedException caught!\n${e.message}\nStatus: ${e.statusCode}';
         _isError = true;
       });
     } on ApiStudioException catch (e) {
@@ -49,7 +50,10 @@ class _UnauthorizedScreenState extends State<UnauthorizedScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          DemoButton(label: 'Send to 401 endpoint', onPressed: _run, loading: _loading),
+          DemoButton(
+              label: 'Send to 401 endpoint',
+              onPressed: _run,
+              loading: _loading),
           if (_result.isNotEmpty)
             ResultCard(label: 'Result', value: _result, isError: _isError),
         ],

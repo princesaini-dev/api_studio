@@ -52,7 +52,8 @@ class _ProxyBodyState extends State<_ProxyBody> {
       setState(() => _result = 'Connected via proxy successfully!');
     } on NetworkException catch (e) {
       setState(() {
-        _result = 'NetworkException (expected — no proxy running):\n${e.message}';
+        _result =
+            'NetworkException (expected — no proxy running):\n${e.message}';
         _isError = true;
       });
     } on ApiStudioException catch (e) {
@@ -89,8 +90,7 @@ class _ProxyBodyState extends State<_ProxyBody> {
             ),
           ),
         ),
-        DemoButton(
-            label: 'Send via Proxy', onPressed: _run, loading: _loading),
+        DemoButton(label: 'Send via Proxy', onPressed: _run, loading: _loading),
         if (_result.isNotEmpty)
           ResultCard(label: 'Result', value: _result, isError: _isError),
       ],

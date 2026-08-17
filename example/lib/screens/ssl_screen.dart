@@ -16,20 +16,31 @@ class _SslScreenState extends State<SslScreen> {
   bool _isError = false;
 
   Future<void> _runDefault() async {
-    setState(() { _loading = true; _result = ''; _isError = false; });
+    setState(() {
+      _loading = true;
+      _result = '';
+      _isError = false;
+    });
     try {
-      final res = await ApiStudioClient.instance
-          .get<Map<String, dynamic>>('/posts/1');
+      final res =
+          await ApiStudioClient.instance.get<Map<String, dynamic>>('/posts/1');
       setState(() => _result = 'Default SSL OK — Status: ${res.statusCode}');
     } on ApiStudioException catch (e) {
-      setState(() { _result = e.toString(); _isError = true; });
+      setState(() {
+        _result = e.toString();
+        _isError = true;
+      });
     } finally {
       setState(() => _loading = false);
     }
   }
 
   Future<void> _runIgnoreSsl() async {
-    setState(() { _loading = true; _result = ''; _isError = false; });
+    setState(() {
+      _loading = true;
+      _result = '';
+      _isError = false;
+    });
     try {
       final config = ClientConfig(
         baseUrl: 'https://jsonplaceholder.typicode.com',
@@ -37,12 +48,15 @@ class _SslScreenState extends State<SslScreen> {
       );
       ApiStudioClient.initialize(
           baseUrl: 'https://jsonplaceholder.typicode.com', config: config);
-      final res = await ApiStudioClient.instance
-          .get<Map<String, dynamic>>('/posts/1');
-      setState(() =>
-          _result = 'Ignore-SSL OK — Status: ${res.statusCode}\n(Certificate not verified)');
+      final res =
+          await ApiStudioClient.instance.get<Map<String, dynamic>>('/posts/1');
+      setState(() => _result =
+          'Ignore-SSL OK — Status: ${res.statusCode}\n(Certificate not verified)');
     } on ApiStudioException catch (e) {
-      setState(() { _result = e.toString(); _isError = true; });
+      setState(() {
+        _result = e.toString();
+        _isError = true;
+      });
     } finally {
       ApiStudio.initClient(baseUrl: 'https://jsonplaceholder.typicode.com');
       setState(() => _loading = false);

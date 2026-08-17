@@ -44,7 +44,10 @@ class _CancellationScreenState extends State<CancellationScreen> {
         _isError = true;
       });
     } finally {
-      setState(() { _loading = false; _token = null; });
+      setState(() {
+        _loading = false;
+        _token = null;
+      });
     }
   }
 
@@ -60,7 +63,10 @@ class _CancellationScreenState extends State<CancellationScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          DemoButton(label: 'Start Long Request', onPressed: _loading ? null : _start, loading: _loading),
+          DemoButton(
+              label: 'Start Long Request',
+              onPressed: _loading ? null : _start,
+              loading: _loading),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             child: OutlinedButton.icon(

@@ -46,11 +46,13 @@ class _PutScreenState extends State<PutScreen> {
   Widget build(BuildContext context) {
     return DemoScaffold(
       title: 'PUT Request',
-      description: 'PUT /posts/1 → expects 200 OK with the fully replaced post echoed back.',
+      description:
+          'PUT /posts/1 → expects 200 OK with the fully replaced post echoed back.',
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          DemoButton(label: 'Send PUT /posts/1', onPressed: _run, loading: _loading),
+          DemoButton(
+              label: 'Send PUT /posts/1', onPressed: _run, loading: _loading),
           if (_result.isNotEmpty)
             ResultCard(label: 'Response', value: _result, isError: _isError),
         ],

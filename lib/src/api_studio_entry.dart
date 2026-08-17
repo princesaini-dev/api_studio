@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'notification/config/notification_config.dart';
 import 'services/di_service.dart';
 import 'presentation/screens/inspector_list_screen.dart';
+import 'presentation/screens/file_explorer_screen.dart';
 import 'theme/api_inspector_theme.dart';
 import 'theme/api_inspector_theme_data.dart';
 import 'api_client/client/api_studio_client.dart';
@@ -107,6 +108,24 @@ class ApiStudio {
         pageBuilder: (_, __, ___) => ApiInspectorTheme(
           data: effectiveTheme,
           child: const InspectorListScreen(),
+        ),
+        transitionsBuilder: (_, animation, __, child) =>
+            FadeTransition(opacity: animation, child: child),
+        transitionDuration: const Duration(milliseconds: 250),
+      ),
+    );
+  }
+
+  static void showFileExplorer(
+    BuildContext context, {
+    ApiInspectorThemeData? theme,
+  }) {
+    final effectiveTheme = theme ?? _themeData;
+    Navigator.of(context).push(
+      PageRouteBuilder<void>(
+        pageBuilder: (_, __, ___) => ApiInspectorTheme(
+          data: effectiveTheme,
+          child: const FileExplorerScreen(),
         ),
         transitionsBuilder: (_, animation, __, child) =>
             FadeTransition(opacity: animation, child: child),
