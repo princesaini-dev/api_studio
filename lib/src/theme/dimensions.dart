@@ -20,6 +20,7 @@ class Dimensions {
   static const double iconLg = 24.0;
 
   static const double logCardHeight = 80.0;
+  static const double performanceGraphHeight = 80.0;
   static const double appBarHeight = 64.0;
   static const double tabBarHeight = 48.0;
   static const double searchBarHeight = 48.0;

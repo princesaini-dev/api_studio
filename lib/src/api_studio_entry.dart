@@ -3,10 +3,13 @@ import 'notification/config/notification_config.dart';
 import 'services/di_service.dart';
 import 'presentation/screens/inspector_list_screen.dart';
 import 'presentation/screens/file_explorer_screen.dart';
+import 'presentation/screens/performance_inspector_screen.dart';
 import 'theme/api_inspector_theme.dart';
 import 'theme/api_inspector_theme_data.dart';
 import 'api_client/client/api_studio_client.dart';
 import 'api_client/core/api_studio_remote_logger.dart';
+import 'services/performance_monitor.dart';
+import 'domain/entities/performance_snapshot.dart';
 
 class ApiStudio {
   ApiStudio._();
@@ -133,4 +136,40 @@ class ApiStudio {
       ),
     );
   }
+
+  /// Opens the Performance Inspector as a full-screen page.
+  ///
+  /// ```dart
+  /// ApiStudio.showPerformanceInspector(context);
+  /// ```
+  static void showPerformanceInspector(
+    BuildContext context, {
+    ApiInspectorThemeData? theme,
+  }) {
+    final effectiveTheme = theme ?? _themeData;
+    Navigator.of(context).push(
+      PageRouteBuilder<void>(
+        pageBuilder: (_, __, ___) => ApiInspectorTheme(
+          data: effectiveTheme,
+          child: const PerformanceInspectorScreen(),
+        ),
+        transitionsBuilder: (_, animation, __, child) =>
+            FadeTransition(opacity: animation, child: child),
+        transitionDuration: const Duration(milliseconds: 250),
+      ),
+    );
+  }
+
+  // ── Performance Monitoring API ─────────────────────────────────────
+
+  /// Starts performance monitoring (frame timings, memory polling).
+  static void startPerformanceMonitoring() =>
+      PerformanceMonitor.instance.start();
+
+  /// Stops performance monitoring.
+  static void stopPerformanceMonitoring() => PerformanceMonitor.instance.stop();
+
+  /// A broadcast stream of [PerformanceSnapshot] updates.
+  static Stream<PerformanceSnapshot> get performanceStream =>
+      PerformanceMonitor.instance.snapshotStream;
 }

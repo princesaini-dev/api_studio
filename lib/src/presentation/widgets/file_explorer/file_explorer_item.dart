@@ -109,7 +109,7 @@ class FileExplorerItem extends StatelessWidget {
 
   String _subtitle() {
     if (entry.isFolder) {
-      return AppStrings.itemCount(entry.sizeBytes ?? 0);
+      return AppStrings.itemCount(entry.childCount ?? 0);
     }
     if (entry.sizeBytes != null) {
       return AppStrings.formatBytes(entry.sizeBytes);

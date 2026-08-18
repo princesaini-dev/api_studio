@@ -173,6 +173,11 @@ class _HomeScreenState extends State<HomeScreen> {
             tooltip: 'Open File Explorer',
             onPressed: () => ApiStudio.showFileExplorer(context),
           ),
+          IconButton(
+            icon: const Icon(Icons.speed_rounded),
+            tooltip: 'Open Performance Inspector',
+            onPressed: () => ApiStudio.showPerformanceInspector(context),
+          ),
         ],
       ),
       body: ListView.separated(

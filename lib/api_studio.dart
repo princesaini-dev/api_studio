@@ -18,10 +18,22 @@ export 'src/domain/entities/breadcrumb.dart';
 export 'src/domain/repositories/file_explorer_repository.dart';
 export 'src/domain/usecases/list_directory_usecase.dart';
 
+// Performance Inspector
+export 'src/domain/entities/performance_snapshot.dart';
+export 'src/domain/entities/frame_metrics.dart';
+export 'src/domain/entities/memory_metrics.dart';
+export 'src/domain/entities/startup_metrics.dart';
+export 'src/domain/entities/performance_event.dart';
+export 'src/domain/entities/screen_performance.dart';
+export 'src/domain/entities/network_performance.dart';
+export 'src/domain/entities/connectivity_performance.dart';
+export 'src/domain/repositories/performance_repository.dart';
+
 export 'src/presentation/screens/inspector_list_screen.dart';
 export 'src/presentation/screens/inspector_detail_screen.dart';
 export 'src/presentation/screens/edit_run_screen.dart';
 export 'src/presentation/screens/file_explorer_screen.dart';
+export 'src/presentation/screens/performance_inspector_screen.dart';
 
 export 'src/theme/api_inspector_theme.dart';
 export 'src/theme/api_inspector_theme_data.dart';

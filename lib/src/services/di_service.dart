@@ -12,8 +12,10 @@ import '../data/datasources/file_explorer_datasource.dart'
 import '../data/models/api_log_hive_model.dart';
 import '../data/repositories/api_log_repository_impl.dart';
 import '../data/repositories/file_explorer_repository_impl.dart';
+import '../data/repositories/performance_repository_impl.dart';
 import '../domain/repositories/api_log_repository.dart';
 import '../domain/repositories/file_explorer_repository.dart';
+import '../domain/repositories/performance_repository.dart';
 import '../domain/usecases/clear_logs_usecase.dart';
 import '../domain/usecases/delete_log_usecase.dart';
 import '../domain/usecases/get_logs_usecase.dart';
@@ -31,6 +33,8 @@ import '../presentation/blocs/export/export_bloc.dart';
 import '../presentation/blocs/inspector_detail/inspector_detail_bloc.dart';
 import '../presentation/blocs/inspector_list/inspector_list_bloc.dart';
 import '../presentation/blocs/file_explorer/file_explorer_bloc.dart';
+import '../presentation/blocs/performance/performance_bloc.dart';
+import 'performance_monitor.dart';
 import 'export_service.dart';
 import '../api_client/client/api_studio_client.dart';
 import '../api_client/core/inspector_logger.dart';
@@ -40,6 +44,7 @@ class DiService {
 
   static late ApiLogRepository _repository;
   static late FileExplorerRepository _fileExplorerRepository;
+  static late PerformanceRepository _performanceRepository;
   static late FileActionService _fileActionService;
   static NotificationService? _notificationService;
   static bool _initialized = false;
@@ -76,6 +81,8 @@ class DiService {
         FileExplorerRepositoryImpl(FileExplorerDataSource());
     _fileActionService =
         FileActionService(_fileExplorerRepository, FileDownloadService());
+    _performanceRepository =
+        PerformanceRepositoryImpl(PerformanceMonitor.instance);
     _initialized = true;
     if (enableConnectivityStream) ConnectivityService.instance.start();
     if (enableFailedApiStream) {
@@ -139,4 +146,12 @@ class DiService {
     assert(_initialized, 'DiService.init() must be called before use');
     return _fileActionService;
   }
+
+  static PerformanceRepository get performanceRepository {
+    assert(_initialized, 'DiService.init() must be called before use');
+    return _performanceRepository;
+  }
+
+  static PerformanceBloc createPerformanceBloc() =>
+      PerformanceBloc(repository: _performanceRepository);
 }

@@ -34,8 +34,10 @@ class FileDownloadService {
       final dir = Directory(path);
       if (await dir.exists()) {
         try {
-          return _copyFile(sourceFile, fileName, dir);
+          return await _copyFile(sourceFile, fileName, dir);
         } catch (_) {
+          // This candidate download directory exists but write failed
+          // (e.g. permission denied). Fall through and try the next one.
           continue;
         }
       }
@@ -51,7 +53,9 @@ class FileDownloadService {
     try {
       final external = await getExternalStorageDirectory();
       if (external != null) return external;
-    } catch (_) {}
+    } catch (_) {
+      // Not available on this platform (e.g. desktop) — fall back below.
+    }
 
     return getApplicationDocumentsDirectory();
   }

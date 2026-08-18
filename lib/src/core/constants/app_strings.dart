@@ -132,6 +132,7 @@ class AppStrings {
 
   // Loading
   static const String loading = 'Loading…';
+  static const String waitingForData = 'Waiting for data…';
 
   // Units
   static String bytes(int n) => '$n B';
@@ -177,4 +178,115 @@ class AppStrings {
   static const String downloadConfirmation = 'Download file?';
   static String downloadConfirmationSubtitle(String name) =>
       'Save $name to your device.';
+
+  // Performance Inspector - Header
+  static const String performanceInspector = 'Performance Inspector';
+  static const String recording = 'Recording';
+  static const String monitoringActive = 'Monitoring active';
+  static const String monitoringInactive = 'Monitoring inactive';
+  static const String startMonitoring = 'Start monitoring';
+  static const String stopMonitoring = 'Stop monitoring';
+  static const String clearSession = 'Clear session';
+
+  // Performance Inspector - Overview
+  static const String fps = 'FPS';
+  static const String fpsTooltip =
+      'Frames per second - measures rendering smoothness';
+  static const String averageFps = 'Avg FPS';
+  static const String minFps = 'Min FPS';
+  static const String maxFps = 'Max FPS';
+  static const String currentFps = 'Current FPS';
+  static const String frameTime = 'Frame Time';
+  static const String jankyFrames = 'Janky Frames';
+  static const String jankRate = 'Jank Rate';
+  static const String uiTime = 'UI Time';
+  static const String rasterTime = 'Raster Time';
+  static const String memoryUsage = 'Memory Usage';
+  static const String peakMemory = 'Peak Memory';
+  static const String appStartupTime = 'App Startup Time';
+  static const String sessionDuration = 'Session Duration';
+
+  // Performance Inspector - Frame Performance
+  static const String framePerformance = 'Frame Performance';
+  static const String fpsGraph = 'FPS over time';
+  static const String frameTimeGraph = 'Frame time over time';
+  static const String avgFrameTime = 'Avg Frame Time';
+  static const String slowFrames = 'Slow Frames';
+  static const String jankPercentage = 'Jank %';
+  static const String uiThreadTime = 'UI Thread Time';
+  static const String rasterThreadTime = 'Raster Thread Time';
+  static const String totalProcessingTime = 'Total Processing Time';
+
+  // Performance Inspector - Jank
+  static const String jankDetection = 'Jank Detection';
+  static const String totalFrames = 'Total Frames';
+  static const String noJankDetected = 'No jank detected';
+  static const String recentSlowFrames = 'Recent Slow Frames';
+  static const String worstFrame = 'Worst Frame';
+  static const String jank = 'jank';
+  static String frameDuration(double ms) => '${ms.toStringAsFixed(1)} ms';
+
+  // Performance Inspector - Memory
+  static const String memory = 'Memory';
+  static const String memoryNotAvailable =
+      'Memory usage is not available on this platform';
+  static const String memoryGraph = 'Memory usage over time';
+  static const String currentMemory = 'Current Memory';
+  static const String minMemory = 'Min Memory';
+  static const String memoryGrowth = 'Memory Growth';
+  static const String memoryTrend = 'Memory Trend';
+  static const String sessionMemoryChange = 'Session Memory Change';
+  static const String memoryTrendStable = 'Stable';
+  static const String memoryTrendGrowing = 'Growing';
+  static const String memoryTrendDecreasing = 'Decreasing';
+  static const String memoryTrendUnknown = 'Unknown';
+
+  // Performance Inspector - Startup
+  static const String startupPerformance = 'App Startup Performance';
+  static const String startupNotAvailable =
+      'Startup timing data is not available';
+  static const String totalStartupDuration = 'Total Startup Duration';
+
+  // Performance Inspector - Screen
+  static const String screenPerformance = 'Screen Performance';
+  static const String noScreensTracked = 'No screens are being tracked';
+  static const String good = 'Good';
+  static const String warning = 'Warning';
+  static const String critical = 'Critical';
+  static const String unavailable = 'Unavailable';
+  static const String active = 'Active';
+  static const String notAvailableOnPlatform = 'Not available on this platform';
+
+  // Performance Inspector - Network
+  static const String networkPerformance = 'Network Performance';
+  static const String noNetworkData = 'No network requests recorded';
+  static const String totalRequests = 'Total Requests';
+  static const String successfulRequests = 'Successful';
+  static const String failedRequests = 'Failed';
+  static const String timeouts = 'Timeouts';
+  static const String avgResponseTime = 'Avg Response Time';
+  static const String slowestRequest = 'Slowest Request';
+  static const String fastestRequest = 'Fastest Request';
+
+  // Performance Inspector - Connectivity
+  static const String connectivityPerformance = 'Connectivity Performance';
+  static const String connected = 'Connected';
+  static const String disconnected = 'Disconnected';
+  static const String connectivityChanges = 'Connectivity Changes';
+  static const String timeOffline = 'Time Offline';
+  static const String failedRequestsOffline = 'Failed Requests (Offline)';
+
+  // Performance Inspector - Timeline
+  static const String performanceTimeline = 'Performance Timeline';
+  static const String noTimelineEvents = 'No events recorded yet';
+
+  // Performance Inspector - Score
+  static const String performanceHealth = 'Performance Health';
+  static const String performanceScoreDisclaimer =
+      'API Studio Performance Score - based on available metrics only';
+  static const String gradeExcellent = 'Excellent';
+  static const String gradeGood = 'Good';
+  static const String gradeFair = 'Fair';
+  static const String gradePoor = 'Poor';
+  static const String gradeInsufficientData = 'Insufficient Data';
 }
