@@ -77,9 +77,11 @@ class FileDownloadService {
   }
 
   Future<String> _downloadViaShare(File sourceFile, String fileName) async {
-    await Share.shareXFiles(
-      [XFile(sourceFile.path)],
-      text: fileName,
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [XFile(sourceFile.path)],
+        text: fileName,
+      ),
     );
     return sourceFile.path;
   }

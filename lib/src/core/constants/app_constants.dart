@@ -18,4 +18,13 @@ class AppConstants {
   static const String apiStudioLogsPath = '/api/v1/logs';
 
   static String get apiStudioLogsUrl => '$apiStudioBaseUrl$apiStudioLogsPath';
+
+  /// Endpoint that aggregated performance telemetry is POSTed to.
+  ///
+  /// Uses the same [apiStudioBaseUrl] as [apiStudioLogsUrl] — performance
+  /// telemetry never introduces a second base URL.
+  static const String apiStudioPerformancePath = '/api/v1/performance';
+
+  static String get apiStudioPerformanceUrl =>
+      '$apiStudioBaseUrl$apiStudioPerformancePath';
 }

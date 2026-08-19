@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../api_client/core/api_studio_performance_uploader.dart';
 import '../../domain/entities/performance_snapshot.dart';
 import '../../services/di_service.dart';
 import '../../theme/api_inspector_theme.dart';
@@ -21,7 +24,7 @@ import '../widgets/performance_inspector/performance_screen_section.dart';
 import '../widgets/performance_inspector/performance_startup_section.dart';
 import '../widgets/performance_inspector/performance_timeline_section.dart';
 
-class PerformanceInspectorScreen extends StatelessWidget {
+class PerformanceInspectorScreen extends StatefulWidget {
   const PerformanceInspectorScreen({super.key});
 
   static Route<void> route() {
@@ -31,6 +34,19 @@ class PerformanceInspectorScreen extends StatelessWidget {
           FadeTransition(opacity: animation, child: child),
       transitionDuration: const Duration(milliseconds: 250),
     );
+  }
+
+  @override
+  State<PerformanceInspectorScreen> createState() =>
+      _PerformanceInspectorScreenState();
+}
+
+class _PerformanceInspectorScreenState
+    extends State<PerformanceInspectorScreen> {
+  @override
+  void initState() {
+    super.initState();
+    unawaited(PerformanceTelemetryUploader.uploadNow());
   }
 
   @override

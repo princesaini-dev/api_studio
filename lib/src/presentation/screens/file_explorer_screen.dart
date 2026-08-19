@@ -161,9 +161,11 @@ class FileExplorerList extends StatelessWidget {
     try {
       final filePath =
           await DiService.fileActionService.getFilePath(entry.path);
-      await Share.shareXFiles(
-        [XFile(filePath)],
-        text: entry.name,
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(filePath)],
+          text: entry.name,
+        ),
       );
     } catch (_) {
       if (!context.mounted) return;

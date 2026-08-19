@@ -27,6 +27,7 @@ API Studio embeds a full HTTP client, a real-time API inspector, a lightweight p
 | Export Logs (JSON / TXT) | ✅ |
 | File Explorer | ✅ |
 | Performance Inspector | ✅ |
+| Optional Remote Performance Telemetry | ✅ |
 
 ---
 
@@ -193,13 +194,37 @@ ApiStudio.stopPerformanceMonitoring();
 
 <p align="center"><img src="assets/ss7.png" width="32%"></p>
 
+### 📊 Performance Monitoring (Remote Telemetry)
+
+Optionally upload **aggregated** performance snapshots to the API Studio backend, so you can track app health over time without leaving your own analytics stack out of the loop.
+
+```dart
+await ApiStudio.initialize(
+  apiKey: 'YOUR_API_KEY',
+  enablePerformanceMonitoring: true,
+);
+```
+
+- **Disabled by default** (`enablePerformanceMonitoring: false`) — with no `apiKey`/flag, zero performance network calls are ever made.
+- Performance metrics (FPS, frame time, jank, memory, startup, health score) are collected **locally** using the existing Performance Inspector engine — nothing new to configure.
+- An aggregated snapshot is uploaded **at most once per hour** — never every few seconds, never on every snapshot.
+- The one-hour interval is persisted locally and **survives app restarts**.
+- Uses the exact same `apiKey` and backend already configured for [Optional Remote API Logging](#-optional-remote-api-logging) — no second API key, no second base URL.
+- Fire-and-forget — a failed performance upload never affects, delays, or throws for your normal API requests.
+
+Conceptually, this uploads to:
+
+```text
+POST /api/v1/performance
+```
+
 ---
 
 ## 📦 Installation
 
 ```yaml
 dependencies:
-  api_studio: ^1.0.2
+  api_studio: ^1.0.3
 ```
 
 ```bash

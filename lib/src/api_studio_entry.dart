@@ -8,6 +8,7 @@ import 'theme/api_inspector_theme.dart';
 import 'theme/api_inspector_theme_data.dart';
 import 'api_client/client/api_studio_client.dart';
 import 'api_client/core/api_studio_remote_logger.dart';
+import 'api_client/core/api_studio_performance_uploader.dart';
 import 'services/performance_monitor.dart';
 import 'domain/entities/performance_snapshot.dart';
 
@@ -28,6 +29,13 @@ class ApiStudio {
   /// [apiKey] is optional. When it is `null` or empty, automatic remote
   /// logging is completely disabled and the package behaves exactly as
   /// before — no exceptions are thrown either way.
+  ///
+  /// [enablePerformanceMonitoring] opts in to aggregated performance
+  /// telemetry upload (`POST /api/v1/performance`), using the same
+  /// [apiKey] and backend already used for API logs. It defaults to
+  /// `false`: unless explicitly set to `true`, no performance network
+  /// request is ever made. When enabled, at most one aggregated snapshot
+  /// is uploaded per hour — see [PerformanceTelemetryUploader].
   static Future<void> initialize({
     String? apiKey,
     ApiInspectorThemeData? theme,
@@ -35,6 +43,7 @@ class ApiStudio {
     Duration? requestTimeout,
     bool enableConnectivityStream = false,
     bool enableFailedApiStream = false,
+    bool enablePerformanceMonitoring = false,
     NotificationConfig? notificationConfig,
   }) async {
     try {
@@ -50,6 +59,17 @@ class ApiStudio {
       enableFailedApiStream: enableFailedApiStream,
       notificationConfig: notificationConfig,
     );
+    try {
+      PerformanceTelemetryUploader.configure(
+        apiKey: apiKey,
+        enabled: enablePerformanceMonitoring,
+      );
+      if (enablePerformanceMonitoring) {
+        PerformanceMonitor.instance.start();
+      }
+    } catch (_) {
+      // Never let performance telemetry setup affect app startup.
+    }
   }
 
   static Future<void> init({

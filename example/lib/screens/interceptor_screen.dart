@@ -15,8 +15,9 @@ class _InterceptorScreenState extends State<InterceptorScreen> {
   final List<_LogEntry> _log = [];
 
   void _addLog(String phase, String msg, {bool isError = false}) {
-    if (mounted)
+    if (mounted) {
       setState(() => _log.add(_LogEntry(phase, msg, isError: isError)));
+    }
   }
 
   Future<void> _run() async {

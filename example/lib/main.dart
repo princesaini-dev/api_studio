@@ -35,6 +35,7 @@ Future<void> main() async {
     apiKey: null,
     enableConnectivityStream: true,
     enableFailedApiStream: true,
+    enablePerformanceMonitoring: true,
   );
   ApiStudio.initClient(baseUrl: 'https://jsonplaceholder.typicode.com');
   runApp(const ExampleApp());
@@ -48,10 +49,7 @@ class ExampleApp extends StatelessWidget {
     return MaterialApp(
       title: 'API Studio Demo',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorSchemeSeed: Colors.indigo,
-        useMaterial3: true,
-      ),
+      theme: ThemeData(colorSchemeSeed: Colors.indigo, useMaterial3: true),
       home: const HomeScreen(),
     );
   }
@@ -92,9 +90,15 @@ class _HomeScreenState extends State<HomeScreen> {
     _DemoItem('20. Parallel Requests', Icons.sync_alt_rounded, Colors.blue),
     _DemoItem('21. Sequential Requests', Icons.list_rounded, Colors.teal),
     _DemoItem(
-        '22. Batch Requests', Icons.batch_prediction_rounded, Colors.orange),
+      '22. Batch Requests',
+      Icons.batch_prediction_rounded,
+      Colors.orange,
+    ),
     _DemoItem(
-        '23. Duplicate Prevention', Icons.filter_none_rounded, Colors.purple),
+      '23. Duplicate Prevention',
+      Icons.filter_none_rounded,
+      Colors.purple,
+    ),
     _DemoItem('24. Interceptors', Icons.layers_rounded, Colors.indigo),
   ];
 
@@ -147,11 +151,13 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(
-        content: Text(msg),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-      ));
+      ..showSnackBar(
+        SnackBar(
+          content: Text(msg),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
   }
 
   @override
@@ -196,11 +202,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: ListTile(
               leading: CircleAvatar(
                 backgroundColor: item.color.withValues(alpha: 0.15),
-                child: Icon(
-                  item.icon,
-                  color: item.color,
-                  size: 16,
-                ),
+                child: Icon(item.icon, color: item.color, size: 16),
               ),
               title: Text(
                 item.title,
@@ -212,9 +214,7 @@ class _HomeScreenState extends State<HomeScreen> {
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.push(
                 context,
-                MaterialPageRoute<void>(
-                  builder: (_) => _screens[i],
-                ),
+                MaterialPageRoute<void>(builder: (_) => _screens[i]),
               ),
             ),
           );
