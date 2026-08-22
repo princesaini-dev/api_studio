@@ -28,12 +28,12 @@ import '../services/file_download_service.dart'
     if (dart.library.html) '../services/file_download_service_web.dart';
 import '../notification/config/notification_config.dart';
 import '../notification/services/notification_service.dart';
-import '../presentation/blocs/edit_run/edit_run_bloc.dart';
-import '../presentation/blocs/export/export_bloc.dart';
-import '../presentation/blocs/inspector_detail/inspector_detail_bloc.dart';
-import '../presentation/blocs/inspector_list/inspector_list_bloc.dart';
-import '../presentation/blocs/file_explorer/file_explorer_bloc.dart';
-import '../presentation/blocs/performance/performance_bloc.dart';
+import '../presentation/controllers/edit_run_controller.dart';
+import '../presentation/controllers/export_controller.dart';
+import '../presentation/controllers/inspector_detail_controller.dart';
+import '../presentation/controllers/inspector_list_controller.dart';
+import '../presentation/controllers/file_explorer_controller.dart';
+import '../presentation/controllers/performance_controller.dart';
 import 'performance_monitor.dart';
 import 'export_service.dart';
 import '../api_client/client/api_studio_client.dart';
@@ -121,29 +121,32 @@ class DiService {
     return _repository;
   }
 
-  static InspectorListBloc createListBloc() => InspectorListBloc(
+  static InspectorListController createListController() =>
+      InspectorListController(
         getLogsUseCase: GetLogsUseCase(_repository),
         deleteLogUseCase: DeleteLogUseCase(_repository),
         clearLogsUseCase: ClearLogsUseCase(_repository),
         repository: _repository,
       );
 
-  static InspectorDetailBloc createDetailBloc() => InspectorDetailBloc(
+  static InspectorDetailController createDetailController() =>
+      InspectorDetailController(
         repository: _repository,
         deleteLogUseCase: DeleteLogUseCase(_repository),
       );
 
-  static EditRunBloc createEditRunBloc() => EditRunBloc(
+  static EditRunController createEditRunController() => EditRunController(
         runRequestUseCase: RunRequestUseCase(_repository),
       );
 
-  static ExportBloc createExportBloc() => ExportBloc(
+  static ExportController createExportController() => ExportController(
         exportService: ExportService(repository: _repository),
       );
 
   static SaveLogUseCase get saveLogUseCase => SaveLogUseCase(_repository);
 
-  static FileExplorerBloc createFileExplorerBloc() => FileExplorerBloc(
+  static FileExplorerController createFileExplorerController() =>
+      FileExplorerController(
         listDirectoryUseCase: ListDirectoryUseCase(_fileExplorerRepository),
       );
 
@@ -157,6 +160,6 @@ class DiService {
     return _performanceRepository;
   }
 
-  static PerformanceBloc createPerformanceBloc() =>
-      PerformanceBloc(repository: _performanceRepository);
+  static PerformanceController createPerformanceController() =>
+      PerformanceController(repository: _performanceRepository);
 }

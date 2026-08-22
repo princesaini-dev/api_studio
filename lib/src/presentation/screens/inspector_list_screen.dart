@@ -1,24 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/constants/app_strings.dart';
 import '../../services/di_service.dart';
 import '../../theme/api_inspector_theme.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/dimensions.dart';
-import '../blocs/export/export_bloc.dart';
-import '../blocs/export/export_event.dart';
-import '../blocs/export/export_state.dart';
-import '../blocs/inspector_list/inspector_list_bloc.dart';
-import '../blocs/inspector_list/inspector_list_event.dart';
-import '../blocs/inspector_list/inspector_list_state.dart';
+import '../states/export_state.dart';
+import '../states/inspector_list_state.dart';
+import '../controllers/export_controller.dart';
+import '../controllers/inspector_list_controller.dart';
 import '../widgets/filter_chip_bar.dart';
 import '../widgets/log_card.dart';
 import '../widgets/search_bar_widget.dart';
-import 'file_explorer_screen.dart';
 import 'inspector_detail_screen.dart';
 
-class InspectorListScreen extends StatelessWidget {
+class InspectorListScreen extends StatefulWidget {
   const InspectorListScreen({super.key});
 
   static Route<void> route() {
@@ -31,43 +27,101 @@ class InspectorListScreen extends StatelessWidget {
   }
 
   @override
+  State<InspectorListScreen> createState() => _InspectorListScreenState();
+}
+
+class _InspectorListScreenState extends State<InspectorListScreen> {
+  late final InspectorListController _listController;
+  late final ExportController _exportController;
+
+  @override
+  void initState() {
+    super.initState();
+    _listController = DiService.createListController();
+    _exportController = DiService.createExportController();
+    _listController.loadLogs();
+  }
+
+  @override
+  void dispose() {
+    _listController.dispose();
+    _exportController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider(
-            create: (_) =>
-                DiService.createListBloc()..add(const LoadLogsEvent())),
-        BlocProvider(create: (_) => DiService.createExportBloc()),
-      ],
-      child: const _InspectorListView(),
+    return _InspectorListView(
+      listController: _listController,
+      exportController: _exportController,
     );
   }
 }
 
-class _InspectorListView extends StatelessWidget {
-  const _InspectorListView();
+class _InspectorListView extends StatefulWidget {
+  final InspectorListController listController;
+  final ExportController exportController;
+
+  const _InspectorListView({
+    required this.listController,
+    required this.exportController,
+  });
+
+  @override
+  State<_InspectorListView> createState() => _InspectorListViewState();
+}
+
+class _InspectorListViewState extends State<_InspectorListView> {
+  ExportStatus? _lastExportStatus;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.exportController.addListener(_onExportChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.exportController.removeListener(_onExportChanged);
+    super.dispose();
+  }
+
+  void _onExportChanged() {
+    final status = widget.exportController.state.status;
+    if (status == ExportStatus.failure &&
+        _lastExportStatus != ExportStatus.failure) {
+      _lastExportStatus = status;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text(widget.exportController.state.errorMessage ??
+                    'Export failed')),
+          );
+        }
+      });
+    } else {
+      _lastExportStatus = status;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = ApiInspectorTheme.of(context);
 
-    return BlocListener<ExportBloc, ExportState>(
-      listener: (context, state) {
-        if (state.status == ExportStatus.failure) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.errorMessage ?? 'Export failed')),
-          );
-        }
-      },
-      child: Scaffold(
-        backgroundColor: theme.backgroundColor,
-        appBar: _buildAppBar(context, theme),
-        body: Column(
-          children: [
-            _SearchAndFilterSection(theme: theme),
-            const Expanded(child: _LogListSection()),
-          ],
-        ),
+    return Scaffold(
+      backgroundColor: theme.backgroundColor,
+      appBar: _buildAppBar(context, theme),
+      body: Column(
+        children: [
+          _SearchAndFilterSection(
+            theme: theme,
+            controller: widget.listController,
+          ),
+          Expanded(
+            child: _LogListSection(controller: widget.listController),
+          ),
+        ],
       ),
     );
   }
@@ -99,16 +153,20 @@ class _InspectorListView extends StatelessWidget {
         ],
       ),
       actions: [
-        BlocBuilder<InspectorListBloc, InspectorListState>(
-          buildWhen: (p, c) => p.logs.length != c.logs.length,
-          builder: (context, state) => state.logs.isNotEmpty
-              ? IconButton(
-                  icon: Icon(Icons.delete_sweep_outlined,
-                      color: theme.textSecondaryColor, size: Dimensions.iconMd),
-                  tooltip: AppStrings.clearAllLogs,
-                  onPressed: () => _confirmClear(context, theme),
-                )
-              : const SizedBox.shrink(),
+        AnimatedBuilder(
+          animation: widget.listController,
+          builder: (context, child) {
+            final logs = widget.listController.state.logs;
+            return logs.isNotEmpty
+                ? IconButton(
+                    icon: Icon(Icons.delete_sweep_outlined,
+                        color: theme.textSecondaryColor,
+                        size: Dimensions.iconMd),
+                    tooltip: AppStrings.clearAllLogs,
+                    onPressed: () => _confirmClear(context, theme),
+                  )
+                : const SizedBox.shrink();
+          },
         ),
         PopupMenuButton<String>(
           icon: Icon(Icons.ios_share_rounded,
@@ -118,9 +176,8 @@ class _InspectorListView extends StatelessWidget {
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(Dimensions.radiusMd)),
           onSelected: (v) {
-            final bloc = context.read<ExportBloc>();
-            if (v == 'json') bloc.add(const ExportAsJsonEvent());
-            if (v == 'txt') bloc.add(const ExportAsTxtEvent());
+            if (v == 'json') widget.exportController.exportAsJson();
+            if (v == 'txt') widget.exportController.exportAsTxt();
           },
           itemBuilder: (_) => [
             PopupMenuItem(
@@ -176,7 +233,7 @@ class _InspectorListView extends StatelessWidget {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              context.read<InspectorListBloc>().add(const ClearAllLogsEvent());
+              widget.listController.clearAllLogs();
             },
             child: Text(AppStrings.clear,
                 style:
@@ -190,7 +247,9 @@ class _InspectorListView extends StatelessWidget {
 
 class _SearchAndFilterSection extends StatelessWidget {
   final dynamic theme;
-  const _SearchAndFilterSection({required this.theme});
+  final InspectorListController controller;
+  const _SearchAndFilterSection(
+      {required this.theme, required this.controller});
 
   @override
   Widget build(BuildContext context) {
@@ -200,26 +259,22 @@ class _SearchAndFilterSection extends StatelessWidget {
       child: Column(
         children: [
           SearchBarWidget(
-            onChanged: (q) =>
-                context.read<InspectorListBloc>().add(SearchLogsEvent(q)),
+            onChanged: (q) => controller.searchLogs(q),
           ),
           const SizedBox(height: 10),
-          BlocBuilder<InspectorListBloc, InspectorListState>(
-            buildWhen: (p, c) =>
-                p.methodFilter != c.methodFilter ||
-                p.statusFilter != c.statusFilter ||
-                p.sortOrder != c.sortOrder,
-            builder: (context, state) => FilterChipBar(
-              selectedMethod: state.methodFilter,
-              selectedStatus: state.statusFilter,
-              selectedSort: state.sortOrder,
-              onMethodChanged: (f) =>
-                  context.read<InspectorListBloc>().add(FilterMethodEvent(f)),
-              onStatusChanged: (f) =>
-                  context.read<InspectorListBloc>().add(FilterStatusEvent(f)),
-              onSortChanged: (s) =>
-                  context.read<InspectorListBloc>().add(SortLogsEvent(s)),
-            ),
+          AnimatedBuilder(
+            animation: controller,
+            builder: (context, _) {
+              final state = controller.state;
+              return FilterChipBar(
+                selectedMethod: state.methodFilter,
+                selectedStatus: state.statusFilter,
+                selectedSort: state.sortOrder,
+                onMethodChanged: (f) => controller.filterMethod(f),
+                onStatusChanged: (f) => controller.filterStatus(f),
+                onSortChanged: (s) => controller.sortLogs(s),
+              );
+            },
           ),
         ],
       ),
@@ -228,7 +283,8 @@ class _SearchAndFilterSection extends StatelessWidget {
 }
 
 class _LogListSection extends StatefulWidget {
-  const _LogListSection();
+  final InspectorListController controller;
+  const _LogListSection({required this.controller});
 
   @override
   State<_LogListSection> createState() => _LogListSectionState();
@@ -246,7 +302,7 @@ class _LogListSectionState extends State<_LogListSection> {
   void _onScroll() {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
-      context.read<InspectorListBloc>().add(const LoadMoreLogsEvent());
+      widget.controller.loadMoreLogs();
     }
   }
 
@@ -259,8 +315,10 @@ class _LogListSectionState extends State<_LogListSection> {
   @override
   Widget build(BuildContext context) {
     final theme = ApiInspectorTheme.of(context);
-    return BlocBuilder<InspectorListBloc, InspectorListState>(
-      builder: (context, state) {
+    return AnimatedBuilder(
+      animation: widget.controller,
+      builder: (context, _) {
+        final state = widget.controller.state;
         if (state.status == InspectorListStatus.loading && state.logs.isEmpty) {
           return ListView.separated(
             padding: const EdgeInsets.all(Dimensions.lg),
@@ -330,7 +388,7 @@ class _LogListSectionState extends State<_LogListSection> {
                   ),
                 );
                 if (confirmed == true && context.mounted) {
-                  context.read<InspectorListBloc>().add(DeleteLogEvent(log.id));
+                  widget.controller.deleteLog(log.id);
                 }
               },
             );

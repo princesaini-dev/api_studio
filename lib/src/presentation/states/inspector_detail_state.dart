@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import '../../../domain/entities/api_log_entity.dart';
+import '../../domain/entities/api_log_entity.dart';
 
 enum DetailStatus { initial, loading, success, failure, deleted }
 

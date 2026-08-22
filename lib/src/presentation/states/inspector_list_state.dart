@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
-import '../../../domain/entities/api_log_entity.dart';
-import '../../../domain/repositories/api_log_repository.dart';
+import '../../domain/entities/api_log_entity.dart';
+import '../../domain/repositories/api_log_repository.dart';
 
 enum InspectorListStatus { initial, loading, success, failure }
 

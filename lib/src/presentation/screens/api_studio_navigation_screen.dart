@@ -19,7 +19,7 @@ import 'performance_inspector_screen.dart';
 /// screen separately.
 ///
 /// The three feature screens are kept alive via [IndexedStack] so switching
-/// tabs never rebuilds or reinitializes their blocs/state.
+/// tabs never rebuilds or reinitializes their controllers/state.
 class ApiStudioNavigationScreen extends StatefulWidget {
   final int initialIndex;
 

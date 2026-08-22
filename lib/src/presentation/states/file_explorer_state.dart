@@ -1,8 +1,8 @@
 import 'package:equatable/equatable.dart';
 
-import '../../../domain/entities/breadcrumb.dart';
-import '../../../domain/entities/file_explorer_entry.dart';
-import '../../../core/constants/app_strings.dart';
+import '../../domain/entities/breadcrumb.dart';
+import '../../domain/entities/file_explorer_entry.dart';
+import '../../core/constants/app_strings.dart';
 
 enum FileExplorerStatus { initial, loading, loaded, empty, error }
 

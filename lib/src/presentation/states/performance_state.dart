@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-import '../../../domain/entities/performance_snapshot.dart';
+import '../../domain/entities/performance_snapshot.dart';
 
 enum PerformanceStatus { initial, monitoring, recording, stopped }
 

@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/api_log_entity.dart';
 import '../../services/di_service.dart';
 import '../../theme/api_inspector_theme.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/dimensions.dart';
-import '../blocs/edit_run/edit_run_bloc.dart';
-import '../blocs/edit_run/edit_run_event.dart';
-import '../blocs/edit_run/edit_run_state.dart';
+import '../states/edit_run_state.dart';
+import '../controllers/edit_run_controller.dart';
 
-class EditRunScreen extends StatelessWidget {
+class EditRunScreen extends StatefulWidget {
   final ApiLogEntity log;
 
   const EditRunScreen({super.key, required this.log});
@@ -24,46 +22,83 @@ class EditRunScreen extends StatelessWidget {
   }
 
   @override
+  State<EditRunScreen> createState() => _EditRunScreenState();
+}
+
+class _EditRunScreenState extends State<EditRunScreen> {
+  late final EditRunController _controller;
+  EditRunStatus? _lastStatus;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = DiService.createEditRunController();
+    _controller.init(widget.log);
+    _controller.addListener(_onStateChanged);
+  }
+
+  void _onStateChanged() {
+    final state = _controller.state;
+    if (state.status != _lastStatus) {
+      _lastStatus = state.status;
+      if (state.status == EditRunStatus.success && state.resultLog != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            final theme = ApiInspectorTheme.of(context);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Request completed — ${state.resultLog!.statusCode ?? 'No status'}',
+                ),
+                backgroundColor: state.resultLog!.isSuccess
+                    ? theme.successColor
+                    : theme.errorColor,
+              ),
+            );
+            Navigator.of(context).pop();
+          }
+        });
+      }
+      if (state.status == EditRunStatus.failure) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            final theme = ApiInspectorTheme.of(context);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.errorMessage ?? 'Request failed'),
+                backgroundColor: theme.errorColor,
+              ),
+            );
+          }
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_onStateChanged);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => DiService.createEditRunBloc()..add(InitEditRunEvent(log)),
-      child: const _EditRunView(),
-    );
+    return _EditRunView(controller: _controller);
   }
 }
 
 class _EditRunView extends StatelessWidget {
-  const _EditRunView();
+  final EditRunController controller;
+  const _EditRunView({required this.controller});
 
   @override
   Widget build(BuildContext context) {
     final theme = ApiInspectorTheme.of(context);
-    return BlocConsumer<EditRunBloc, EditRunState>(
-      listenWhen: (p, c) => p.status != c.status,
-      listener: (context, state) {
-        if (state.status == EditRunStatus.success && state.resultLog != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Request completed — ${state.resultLog!.statusCode ?? 'No status'}',
-              ),
-              backgroundColor: state.resultLog!.isSuccess
-                  ? theme.successColor
-                  : theme.errorColor,
-            ),
-          );
-          Navigator.of(context).pop();
-        }
-        if (state.status == EditRunStatus.failure) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.errorMessage ?? 'Request failed'),
-              backgroundColor: theme.errorColor,
-            ),
-          );
-        }
-      },
-      builder: (context, state) {
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) {
+        final state = controller.state;
         return Scaffold(
           backgroundColor: theme.backgroundColor,
           appBar: AppBar(
@@ -90,14 +125,12 @@ class _EditRunView extends StatelessWidget {
                   child: FilledButton.icon(
                     icon: const Icon(Icons.play_arrow_rounded, size: 18),
                     label: const Text('RUN'),
-                    onPressed: () => context
-                        .read<EditRunBloc>()
-                        .add(const RunRequestEvent()),
+                    onPressed: () => controller.runRequest(),
                   ),
                 ),
             ],
           ),
-          body: const _EditRunForm(),
+          body: _EditRunForm(controller: controller),
         );
       },
     );
@@ -105,7 +138,8 @@ class _EditRunView extends StatelessWidget {
 }
 
 class _EditRunForm extends StatefulWidget {
-  const _EditRunForm();
+  final EditRunController controller;
+  const _EditRunForm({required this.controller});
 
   @override
   State<_EditRunForm> createState() => _EditRunFormState();
@@ -141,7 +175,6 @@ class _EditRunFormState extends State<_EditRunForm> {
 
   void _initControllers(EditRunState state) {
     if (_initialized) return;
-    // Wait until the bloc has processed InitEditRunEvent (url will be non-empty)
     if (state.originalLog == null) return;
     _initialized = true;
     _urlController = TextEditingController(text: state.url);
@@ -156,28 +189,29 @@ class _EditRunFormState extends State<_EditRunForm> {
     });
   }
 
-  void _syncHeaders(BuildContext context) {
+  void _syncHeaders() {
     final headers = <String, dynamic>{};
     _headerControllers.forEach((k, v) {
       if (k.text.isNotEmpty) headers[k.text] = v.text;
     });
-    context.read<EditRunBloc>().add(UpdateHeadersEvent(headers));
+    widget.controller.updateHeaders(headers);
   }
 
-  void _syncParams(BuildContext context) {
+  void _syncParams() {
     final params = <String, dynamic>{};
     _paramControllers.forEach((k, v) {
       if (k.text.isNotEmpty) params[k.text] = v.text;
     });
-    context.read<EditRunBloc>().add(UpdateQueryParamsEvent(params));
+    widget.controller.updateQueryParams(params);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = ApiInspectorTheme.of(context);
-    return BlocBuilder<EditRunBloc, EditRunState>(
-      buildWhen: (p, c) => !_initialized || p.status != c.status,
-      builder: (context, state) {
+    return AnimatedBuilder(
+      animation: widget.controller,
+      builder: (context, _) {
+        final state = widget.controller.state;
         _initControllers(state);
         if (!_initialized) {
           return Center(
@@ -190,8 +224,7 @@ class _EditRunFormState extends State<_EditRunForm> {
             _SectionLabel('Method', theme: theme),
             _MethodSelector(
               selected: state.method,
-              onChanged: (m) =>
-                  context.read<EditRunBloc>().add(UpdateMethodEvent(m)),
+              onChanged: (m) => widget.controller.updateMethod(m),
               theme: theme,
             ),
             const SizedBox(height: Dimensions.lg),
@@ -200,15 +233,14 @@ class _EditRunFormState extends State<_EditRunForm> {
               controller: _urlController,
               hintText: 'https://api.example.com/endpoint',
               theme: theme,
-              onChanged: (v) =>
-                  context.read<EditRunBloc>().add(UpdateUrlEvent(v)),
+              onChanged: (v) => widget.controller.updateUrl(v),
             ),
             const SizedBox(height: Dimensions.lg),
             _KVSection(
               title: 'Headers',
               controllers: _headerControllers,
               theme: theme,
-              onChanged: () => _syncHeaders(context),
+              onChanged: _syncHeaders,
               onAdd: () {
                 setState(() {
                   _headerControllers[TextEditingController()] =
@@ -221,7 +253,7 @@ class _EditRunFormState extends State<_EditRunForm> {
               title: 'Query Params',
               controllers: _paramControllers,
               theme: theme,
-              onChanged: () => _syncParams(context),
+              onChanged: _syncParams,
               onAdd: () {
                 setState(() {
                   _paramControllers[TextEditingController()] =
@@ -236,8 +268,7 @@ class _EditRunFormState extends State<_EditRunForm> {
               hintText: '{"key": "value"}',
               theme: theme,
               maxLines: 8,
-              onChanged: (v) =>
-                  context.read<EditRunBloc>().add(UpdateBodyEvent(v)),
+              onChanged: (v) => widget.controller.updateBody(v),
             ),
             const SizedBox(height: 80),
           ],

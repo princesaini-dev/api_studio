@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/constants/app_strings.dart';
 import '../../domain/entities/api_log_entity.dart';
 import '../../services/di_service.dart';
@@ -8,9 +7,8 @@ import '../../theme/api_inspector_theme.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/dimensions.dart';
-import '../blocs/inspector_detail/inspector_detail_bloc.dart';
-import '../blocs/inspector_detail/inspector_detail_event.dart';
-import '../blocs/inspector_detail/inspector_detail_state.dart';
+import '../states/inspector_detail_state.dart';
+import '../controllers/inspector_detail_controller.dart';
 import '../widgets/curl_preview_sheet.dart';
 import '../widgets/edited_badge.dart';
 import '../widgets/json_viewer.dart';
@@ -18,7 +16,7 @@ import '../widgets/method_badge.dart';
 import '../widgets/status_badge.dart';
 import 'edit_run_screen.dart';
 
-class InspectorDetailScreen extends StatelessWidget {
+class InspectorDetailScreen extends StatefulWidget {
   final String logId;
 
   const InspectorDetailScreen({super.key, required this.logId});
@@ -33,28 +31,34 @@ class InspectorDetailScreen extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => DiService.createDetailBloc()..add(LoadDetailEvent(logId)),
-      child: const _DetailView(),
-    );
-  }
+  State<InspectorDetailScreen> createState() => _InspectorDetailScreenState();
 }
 
-class _DetailView extends StatelessWidget {
-  const _DetailView();
+class _InspectorDetailScreenState extends State<InspectorDetailScreen> {
+  late final InspectorDetailController _controller;
+  DetailStatus? _lastStatus;
+  bool _lastCurlCopied = false;
 
   @override
-  Widget build(BuildContext context) {
-    final theme = ApiInspectorTheme.of(context);
+  void initState() {
+    super.initState();
+    _controller = DiService.createDetailController();
+    _controller.loadDetail(widget.logId);
+    _controller.addListener(_onStateChanged);
+  }
 
-    return BlocConsumer<InspectorDetailBloc, InspectorDetailState>(
-      listenWhen: (p, c) => p.status != c.status,
-      listener: (context, state) {
-        if (state.status == DetailStatus.deleted) {
-          Navigator.of(context).pop();
-        }
-        if (state.curlCopied) {
+  void _onStateChanged() {
+    final state = _controller.state;
+    if (state.status == DetailStatus.deleted &&
+        _lastStatus != DetailStatus.deleted) {
+      _lastStatus = state.status;
+      Navigator.of(context).pop();
+      return;
+    }
+    if (state.curlCopied && !_lastCurlCopied) {
+      _lastCurlCopied = state.curlCopied;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('CURL copied to clipboard'),
@@ -62,8 +66,38 @@ class _DetailView extends StatelessWidget {
             ),
           );
         }
-      },
-      builder: (context, state) {
+      });
+    } else {
+      _lastCurlCopied = state.curlCopied;
+    }
+    _lastStatus = state.status;
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_onStateChanged);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _DetailView(controller: _controller);
+  }
+}
+
+class _DetailView extends StatelessWidget {
+  final InspectorDetailController controller;
+  const _DetailView({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = ApiInspectorTheme.of(context);
+
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) {
+        final state = controller.state;
         if (state.status == DetailStatus.loading ||
             state.status == DetailStatus.initial) {
           return Scaffold(
@@ -187,9 +221,7 @@ class _DetailView extends StatelessWidget {
               ),
             );
             if (confirmed == true && context.mounted) {
-              context
-                  .read<InspectorDetailBloc>()
-                  .add(const DeleteDetailLogEvent());
+              controller.deleteLog();
             }
           },
         ),

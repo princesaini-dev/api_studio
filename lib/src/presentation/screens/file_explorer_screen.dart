@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/constants/app_strings.dart';
@@ -10,9 +9,8 @@ import '../../theme/api_inspector_theme_data.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/dimensions.dart';
-import '../blocs/file_explorer/file_explorer_bloc.dart';
-import '../blocs/file_explorer/file_explorer_event.dart';
-import '../blocs/file_explorer/file_explorer_state.dart';
+import '../states/file_explorer_state.dart';
+import '../controllers/file_explorer_controller.dart';
 import '../widgets/breadcrumb_bar.dart';
 import '../widgets/file_explorer/external_open_failure_dialog.dart';
 import '../widgets/file_explorer/file_explorer_empty_state.dart';
@@ -21,7 +19,7 @@ import '../widgets/file_explorer/file_explorer_header.dart';
 import '../widgets/file_explorer/file_explorer_item.dart';
 import '../widgets/file_explorer/file_explorer_loading_state.dart';
 
-class FileExplorerScreen extends StatelessWidget {
+class FileExplorerScreen extends StatefulWidget {
   const FileExplorerScreen({super.key});
 
   static Route<void> route() {
@@ -34,17 +32,34 @@ class FileExplorerScreen extends StatelessWidget {
   }
 
   @override
+  State<FileExplorerScreen> createState() => _FileExplorerScreenState();
+}
+
+class _FileExplorerScreenState extends State<FileExplorerScreen> {
+  late final FileExplorerController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = DiService.createFileExplorerController();
+    _controller.loadDirectory('');
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => DiService.createFileExplorerBloc()
-        ..add(const FileExplorerLoadDirectoryEvent('')),
-      child: const FileExplorerView(),
-    );
+    return FileExplorerView(controller: _controller);
   }
 }
 
 class FileExplorerView extends StatelessWidget {
-  const FileExplorerView({super.key});
+  final FileExplorerController controller;
+  const FileExplorerView({super.key, required this.controller});
 
   @override
   Widget build(BuildContext context) {
@@ -52,28 +67,33 @@ class FileExplorerView extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: theme.backgroundColor,
-      appBar: FileExplorerHeader(
-        theme: theme,
-        isLoading: context.select<FileExplorerBloc, bool>(
-          (bloc) => bloc.state.status == FileExplorerStatus.loading,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: AnimatedBuilder(
+          animation: controller,
+          builder: (context, _) {
+            return FileExplorerHeader(
+              theme: theme,
+              isLoading: controller.state.status == FileExplorerStatus.loading,
+              onRefresh: () => controller.refresh(),
+              onBack: () => Navigator.of(context).pop(),
+            );
+          },
         ),
-        onRefresh: () => context
-            .read<FileExplorerBloc>()
-            .add(const FileExplorerRefreshEvent()),
-        onBack: () => Navigator.of(context).pop(),
       ),
       body: Column(
         children: [
-          BlocBuilder<FileExplorerBloc, FileExplorerState>(
-            buildWhen: (p, c) => p.currentPath != c.currentPath,
-            builder: (context, state) => BreadcrumbBar(
-              breadcrumbs: state.breadcrumbs,
-              onNavigate: (path) => context
-                  .read<FileExplorerBloc>()
-                  .add(FileExplorerNavigateToEvent(path)),
-            ),
+          AnimatedBuilder(
+            animation: controller,
+            builder: (context, _) {
+              final state = controller.state;
+              return BreadcrumbBar(
+                breadcrumbs: state.breadcrumbs,
+                onNavigate: (path) => controller.navigateTo(path),
+              );
+            },
           ),
-          const Expanded(child: FileExplorerContent()),
+          Expanded(child: FileExplorerContent(controller: controller)),
         ],
       ),
     );
@@ -81,18 +101,17 @@ class FileExplorerView extends StatelessWidget {
 }
 
 class FileExplorerContent extends StatelessWidget {
-  const FileExplorerContent({super.key});
+  final FileExplorerController controller;
+  const FileExplorerContent({super.key, required this.controller});
 
   @override
   Widget build(BuildContext context) {
     final theme = ApiInspectorTheme.of(context);
 
-    return BlocBuilder<FileExplorerBloc, FileExplorerState>(
-      buildWhen: (p, c) =>
-          p.status != c.status ||
-          p.entries != c.entries ||
-          p.errorMessage != c.errorMessage,
-      builder: (context, state) {
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) {
+        final state = controller.state;
         switch (state.status) {
           case FileExplorerStatus.loading:
           case FileExplorerStatus.initial:
@@ -101,9 +120,7 @@ class FileExplorerContent extends StatelessWidget {
             return FileExplorerErrorState(
               theme: theme,
               message: state.errorMessage ?? AppStrings.folderLoadFailed,
-              onRetry: () => context
-                  .read<FileExplorerBloc>()
-                  .add(const FileExplorerRefreshEvent()),
+              onRetry: () => controller.refresh(),
             );
           case FileExplorerStatus.empty:
             return FileExplorerEmptyState(theme: theme);
@@ -111,7 +128,8 @@ class FileExplorerContent extends StatelessWidget {
             if (state.entries.isEmpty) {
               return FileExplorerEmptyState(theme: theme);
             }
-            return FileExplorerList(entries: state.entries, theme: theme);
+            return FileExplorerList(
+                entries: state.entries, theme: theme, controller: controller);
         }
       },
     );
@@ -121,11 +139,13 @@ class FileExplorerContent extends StatelessWidget {
 class FileExplorerList extends StatelessWidget {
   final List<FileExplorerEntry> entries;
   final ApiInspectorThemeData theme;
+  final FileExplorerController controller;
 
   const FileExplorerList({
     super.key,
     required this.entries,
     required this.theme,
+    required this.controller,
   });
 
   @override
@@ -149,9 +169,7 @@ class FileExplorerList extends StatelessWidget {
 
   void _onEntryTap(BuildContext context, FileExplorerEntry entry) {
     if (entry.isFolder) {
-      context
-          .read<FileExplorerBloc>()
-          .add(FileExplorerNavigateToEvent(entry.path));
+      controller.navigateTo(entry.path);
     } else {
       _openExternally(context, entry);
     }

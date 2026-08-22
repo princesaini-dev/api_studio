@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../api_client/core/api_studio_performance_uploader.dart';
 import '../../domain/entities/performance_snapshot.dart';
@@ -9,9 +8,8 @@ import '../../services/di_service.dart';
 import '../../theme/api_inspector_theme.dart';
 import '../../theme/api_inspector_theme_data.dart';
 import '../../theme/dimensions.dart';
-import '../blocs/performance/performance_bloc.dart';
-import '../blocs/performance/performance_event.dart';
-import '../blocs/performance/performance_state.dart';
+import '../states/performance_state.dart';
+import '../controllers/performance_controller.dart';
 import '../widgets/performance_inspector/performance_connectivity_section.dart';
 import '../widgets/performance_inspector/performance_frame_section.dart';
 import '../widgets/performance_inspector/performance_inspector_header.dart';
@@ -43,23 +41,30 @@ class PerformanceInspectorScreen extends StatefulWidget {
 
 class _PerformanceInspectorScreenState
     extends State<PerformanceInspectorScreen> {
+  late final PerformanceController _controller;
+
   @override
   void initState() {
     super.initState();
     unawaited(PerformanceTelemetryUploader.uploadNow());
+    _controller = DiService.createPerformanceController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => DiService.createPerformanceBloc(),
-      child: const PerformanceInspectorView(),
-    );
+    return PerformanceInspectorView(controller: _controller);
   }
 }
 
 class PerformanceInspectorView extends StatelessWidget {
-  const PerformanceInspectorView({super.key});
+  final PerformanceController controller;
+  const PerformanceInspectorView({super.key, required this.controller});
 
   @override
   Widget build(BuildContext context) {
@@ -69,30 +74,26 @@ class PerformanceInspectorView extends StatelessWidget {
       backgroundColor: theme.backgroundColor,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(Dimensions.appBarHeight),
-        child: BlocBuilder<PerformanceBloc, PerformanceState>(
-          buildWhen: (prev, curr) =>
-              prev.status != curr.status ||
-              prev.snapshot.isMonitoring != curr.snapshot.isMonitoring ||
-              prev.snapshot.isRecording != curr.snapshot.isRecording,
-          builder: (context, state) {
+        child: AnimatedBuilder(
+          animation: controller,
+          builder: (context, _) {
+            final state = controller.state;
             return PerformanceInspectorHeader(
               theme: theme,
               isMonitoring: state.snapshot.isMonitoring,
               isRecording: state.snapshot.isRecording,
               onToggleMonitoring: () => _onToggleMonitoring(context, state),
-              onClearSession: () => context
-                  .read<PerformanceBloc>()
-                  .add(const PerformanceClearSessionEvent()),
+              onClearSession: () => controller.clearSession(),
               onBack: () => Navigator.of(context).pop(),
             );
           },
         ),
       ),
-      body: BlocBuilder<PerformanceBloc, PerformanceState>(
-        buildWhen: (prev, curr) => prev.snapshot != curr.snapshot,
-        builder: (context, state) {
+      body: AnimatedBuilder(
+        animation: controller,
+        builder: (context, _) {
           return _PerformanceContent(
-            snapshot: state.snapshot,
+            snapshot: controller.state.snapshot,
             theme: theme,
           );
         },
@@ -101,11 +102,10 @@ class PerformanceInspectorView extends StatelessWidget {
   }
 
   void _onToggleMonitoring(BuildContext context, PerformanceState state) {
-    final bloc = context.read<PerformanceBloc>();
     if (state.snapshot.isMonitoring) {
-      bloc.add(const PerformanceStopMonitoringEvent());
+      controller.stopMonitoring();
     } else {
-      bloc.add(const PerformanceStartMonitoringEvent());
+      controller.startMonitoring();
     }
   }
 }
