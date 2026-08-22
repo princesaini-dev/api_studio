@@ -1,12 +1,12 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:uuid/uuid.dart';
+import '../../../core/utils/uuid_generator.dart';
 import '../../../domain/usecases/run_request_usecase.dart';
 import 'edit_run_event.dart';
 import 'edit_run_state.dart';
 
 class EditRunBloc extends Bloc<EditRunEvent, EditRunState> {
   final RunRequestUseCase runRequestUseCase;
-  final _uuid = const Uuid();
+  final _uuid = const UuidGenerator();
 
   EditRunBloc({required this.runRequestUseCase}) : super(const EditRunState()) {
     on<InitEditRunEvent>(_onInit);

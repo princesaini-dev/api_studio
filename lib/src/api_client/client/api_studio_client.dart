@@ -1,6 +1,6 @@
 import 'dart:async' hide TimeoutException;
 
-import 'package:uuid/uuid.dart';
+import '../../core/utils/uuid_generator.dart';
 
 import '../adapters/http_adapter.dart';
 import '../cache/cache_store.dart';
@@ -61,7 +61,7 @@ class ApiStudioClient {
   final MemoryCacheStore _cache;
   final ApiCookieJar _cookieJar;
   final List<ApiInterceptor> _interceptors = [];
-  final _uuid = const Uuid();
+  final _uuid = const UuidGenerator();
 
   // Duplicate request tracking: key → in-flight CancelToken
   final Map<String, CancelToken> _inFlight = {};
