@@ -61,6 +61,7 @@ class DiService {
     bool enableConnectivityStream = false,
     bool enableFailedApiStream = false,
     NotificationConfig? notificationConfig,
+    bool enableApiClient = true,
   }) async {
     if (_initialized) return;
     if (maxStoredLogs != null) _maxStoredLogs = maxStoredLogs;
@@ -89,13 +90,17 @@ class DiService {
       FailedApiCountService.instance.start(_repository);
     }
 
-    // Wire ApiStudioClient logger so every client request appears in Inspector
-    final logger = InspectorLogger(
-      repository: _repository,
-      maxStoredLogs: _maxStoredLogs,
-      notificationService: _notificationService,
-    );
-    ApiStudioClient.attachLogger(logger);
+    // Wire ApiStudioClient logger so every client request appears in
+    // Inspector. Skipped entirely when the API Client is disabled, avoiding
+    // unnecessary object creation for a feature the host app opted out of.
+    if (enableApiClient) {
+      final logger = InspectorLogger(
+        repository: _repository,
+        maxStoredLogs: _maxStoredLogs,
+        notificationService: _notificationService,
+      );
+      ApiStudioClient.attachLogger(logger);
+    }
   }
 
   static bool get isConnected => ConnectivityService.instance.isConnected;

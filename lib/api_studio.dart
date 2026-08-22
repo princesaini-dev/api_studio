@@ -34,6 +34,7 @@ export 'src/presentation/screens/inspector_detail_screen.dart';
 export 'src/presentation/screens/edit_run_screen.dart';
 export 'src/presentation/screens/file_explorer_screen.dart';
 export 'src/presentation/screens/performance_inspector_screen.dart';
+export 'src/presentation/screens/api_studio_navigation_screen.dart';
 
 export 'src/theme/api_inspector_theme.dart';
 export 'src/theme/api_inspector_theme_data.dart';

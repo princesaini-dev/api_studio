@@ -31,13 +31,16 @@ import 'widgets/failed_api_badge.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Single, unified initialization: API key, backend base URL and the
+  // built-in API Client are all configured through one call.
   await ApiStudio.initialize(
     apiKey: null,
+    baseUrl: 'https://jsonplaceholder.typicode.com',
+    enableApiClient: true,
     enableConnectivityStream: true,
     enableFailedApiStream: true,
     enablePerformanceMonitoring: true,
   );
-  ApiStudio.initClient(baseUrl: 'https://jsonplaceholder.typicode.com');
   runApp(const ExampleApp());
 }
 
@@ -170,19 +173,9 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           FailedApiBadge(count: _failedApiCount),
           IconButton(
-            icon: const Icon(Icons.bug_report_rounded),
-            tooltip: 'Open Inspector',
-            onPressed: () => ApiStudio.show(context),
-          ),
-          IconButton(
-            icon: const Icon(Icons.folder_rounded),
-            tooltip: 'Open File Explorer',
-            onPressed: () => ApiStudio.showFileExplorer(context),
-          ),
-          IconButton(
-            icon: const Icon(Icons.speed_rounded),
-            tooltip: 'Open Performance Inspector',
-            onPressed: () => ApiStudio.showPerformanceInspector(context),
+            icon: const Icon(Icons.dashboard_customize_rounded),
+            tooltip: 'Open API Studio',
+            onPressed: () => ApiStudio.showNavigation(context),
           ),
         ],
       ),

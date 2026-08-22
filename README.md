@@ -17,6 +17,7 @@ API Studio embeds a full HTTP client, a real-time API inspector, a lightweight p
 
 | Feature | Status |
 |---|:---:|
+| Unified Navigation (`ApiStudio.showNavigation()`) | ✅ |
 | HTTP Client (GET / POST / PUT / PATCH / DELETE / HEAD / OPTIONS) | ✅ |
 | Automatic API Inspector | ✅ |
 | Optional Remote API Logging | ✅ |
@@ -61,7 +62,10 @@ A built-in HTTP client, wired directly into the API Inspector — every request 
 | Base URL configuration | ✅ |
 
 ```dart
-ApiStudio.initClient(baseUrl: 'https://api.example.com');
+await ApiStudio.initialize(
+  baseUrl: 'https://api.example.com',
+  enableApiClient: true, // default
+);
 
 final response = await ApiStudioClient.instance.get('/posts');
 
@@ -233,21 +237,64 @@ flutter pub get
 
 ## 🚀 Quick Start
 
+Configure everything — API key, backend base URL, and the built-in API
+Client — through a single unified call, then open the entire toolkit from a
+single entry point:
+
 ```dart
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await ApiStudio.initialize();
+  await ApiStudio.initialize(
+    apiKey: 'YOUR_API_KEY',       // optional
+    baseUrl: 'https://example.com',
+    enableApiClient: true,
+  );
   runApp(const MyApp());
 }
 ```
 
-Open any of the built-in screens from anywhere in your widget tree:
+Then, anywhere inside your widget tree:
 
 ```dart
-ApiStudio.show(context);                     // API Inspector
+ApiStudio.showNavigation(context);
+```
+
+This opens a single **API Studio** screen with **API Logs**, **Performance**
+and **File Explorer** all accessible through a floating bottom navigation
+bar — no need to push each screen separately.
+
+### `enableApiClient`
+
+Controls whether the built-in [`ApiStudioClient`](#-api-client) is wired up.
+Defaults to `true` for backward compatibility. Set it to `false` if you don't
+plan to use `ApiStudioClient` — API Logs and Performance keep working
+normally either way, and no client-related controller, logger or network
+service is created.
+
+### Opening individual screens (still supported)
+
+The individual screens remain available if you need a specific one instead
+of the full navigation:
+
+```dart
+ApiStudio.show(context);                     // API Inspector (Logs)
 ApiStudio.showFileExplorer(context);         // File Explorer
 ApiStudio.showPerformanceInspector(context); // Performance Inspector
 ```
+
+### Migration from separate initialization calls
+
+Previously, the API Client required a second initialization call:
+
+```dart
+// Deprecated — still works, but prefer the unified call below.
+await ApiStudio.initialize(apiKey: 'YOUR_API_KEY');
+ApiStudio.initClient(baseUrl: 'https://api.example.com');
+```
+
+`ApiStudio.initClient` is now `@Deprecated` and delegates to the same
+underlying client setup. Prefer passing `baseUrl` and `enableApiClient`
+directly to `ApiStudio.initialize` instead.
 
 ## 📄 License
 

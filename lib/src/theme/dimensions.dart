@@ -22,7 +22,7 @@ class Dimensions {
   static const double logCardHeight = 80.0;
   static const double performanceGraphHeight = 80.0;
   static const double appBarHeight = 64.0;
-  static const double tabBarHeight = 48.0;
+  static const double tabBarHeight = 52.0;
   static const double searchBarHeight = 48.0;
   static const double filterChipHeight = 36.0;
   static const double badgeHeight = 22.0;

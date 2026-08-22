@@ -280,6 +280,12 @@ class AppStrings {
   static const String performanceTimeline = 'Performance Timeline';
   static const String noTimelineEvents = 'No events recorded yet';
 
+  // API Studio Navigation
+  static const String navLogs = 'Logs';
+  static const String navPerformance = 'Performance';
+  static const String navFiles = 'Files';
+  static const String apiClient = 'API Client';
+
   // Performance Inspector - Score
   static const String performanceHealth = 'Performance Health';
   static const String performanceScoreDisclaimer =

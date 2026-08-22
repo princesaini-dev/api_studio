@@ -99,13 +99,6 @@ class _InspectorListView extends StatelessWidget {
         ],
       ),
       actions: [
-        IconButton(
-          icon: Icon(Icons.folder_rounded,
-              color: theme.textSecondaryColor, size: Dimensions.iconMd),
-          tooltip: AppStrings.openFileExplorer,
-          onPressed: () =>
-              Navigator.of(context).push(FileExplorerScreen.route()),
-        ),
         BlocBuilder<InspectorListBloc, InspectorListState>(
           buildWhen: (p, c) => p.logs.length != c.logs.length,
           builder: (context, state) => state.logs.isNotEmpty

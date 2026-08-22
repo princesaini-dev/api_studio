@@ -96,4 +96,8 @@ class AppColors {
   static const Color durationFast = Color(0xFF22C55E);
   static const Color durationMedium = Color(0xFFF59E0B);
   static const Color durationSlow = Color(0xFFEF4444);
+
+  // Floating surfaces / elevation shadow
+  static const Color shadowLight = Color(0x1A000000);
+  static const Color shadowDark = Color(0x40000000);
 }
