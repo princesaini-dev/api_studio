@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
+import 'simple_http_client.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../exceptions/api_exceptions.dart';
@@ -22,7 +22,7 @@ class ApiStudioRemoteLogger {
   ApiStudioRemoteLogger._();
 
   static String? _apiKey;
-  static http.Client? _client;
+  static SimpleHttpClient? _client;
 
   static const Duration _timeout = Duration(seconds: 10);
 
@@ -153,19 +153,18 @@ class ApiStudioRemoteLogger {
         'timestamp': DateTime.now().toUtc().toIso8601String(),
       });
 
-      final client = _client ??= http.Client();
+      final client = _client ??= SimpleHttpClient();
 
-      final response = await client
-          .post(
-            Uri.parse(AppConstants.apiStudioLogsUrl),
-            headers: {
-              'Authorization': 'Bearer $apiKey',
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-            body: payload,
-          )
-          .timeout(_timeout);
+      final response = await client.post(
+        Uri.parse(AppConstants.apiStudioLogsUrl),
+        headers: {
+          'Authorization': 'Bearer $apiKey',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: payload,
+        timeout: _timeout,
+      );
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         // ignore: avoid_print

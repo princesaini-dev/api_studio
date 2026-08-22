@@ -3,7 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:http/http.dart' as http;
+import 'simple_http_client.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/constants/hive_constants.dart';
@@ -69,7 +69,7 @@ class PerformanceTelemetryUploader {
 
   static PerformanceUploadStateStore _stateStore =
       HivePerformanceUploadStateStore();
-  static http.Client? _client;
+  static SimpleHttpClient? _client;
 
   static StreamSubscription<PerformanceSnapshot>? _subscription;
 
@@ -267,18 +267,17 @@ class PerformanceTelemetryUploader {
     if (apiKey == null) return false;
 
     try {
-      final client = _client ??= http.Client();
-      final response = await client
-          .post(
-            Uri.parse(AppConstants.apiStudioPerformanceUrl),
-            headers: {
-              'Authorization': 'Bearer $apiKey',
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-            body: jsonEncode(payload.toJson()),
-          )
-          .timeout(_timeout);
+      final client = _client ??= SimpleHttpClient();
+      final response = await client.post(
+        Uri.parse(AppConstants.apiStudioPerformanceUrl),
+        headers: {
+          'Authorization': 'Bearer $apiKey',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode(payload.toJson()),
+        timeout: _timeout,
+      );
 
       return response.statusCode >= 200 && response.statusCode < 300;
     } catch (_) {
@@ -286,12 +285,12 @@ class PerformanceTelemetryUploader {
     }
   }
 
-  /// Test-only hook to inject a fake [http.Client] and/or
+  /// Test-only hook to inject a fake [SimpleHttpClient] and/or
   /// [PerformanceUploadStateStore], avoiding real network/Hive access in
   /// unit tests.
   @visibleForTesting
   static void debugOverride({
-    http.Client? client,
+    SimpleHttpClient? client,
     PerformanceUploadStateStore? stateStore,
   }) {
     if (client != null) _client = client;

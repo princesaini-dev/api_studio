@@ -1,8 +1,7 @@
 import 'dart:async' as async;
 import 'dart:convert';
+import 'dart:html' as html;
 import 'dart:typed_data';
-
-import 'package:http/http.dart' as http;
 
 import '../cache/cache_store.dart';
 import '../cookie/cookie_jar.dart';
@@ -16,23 +15,22 @@ import '../request/multipart_file.dart';
 
 typedef ProgressCallback = void Function(int count, int total);
 
-/// Low-level HTTP adapter for web builds backed by `package:http`.
+/// Low-level HTTP adapter for web builds backed by `dart:html` HttpRequest.
 ///
-/// Uses `package:http` / `BrowserClient` so it can run on `dart:html` without
-/// `dart:io`. SSL pinning, proxy and cookie-jar management are not supported
-/// on the web (those features are controlled by the browser / CORS).
+/// Uses `dart:html` [html.HttpRequest] (XMLHttpRequest) so it can run on
+/// `dart:html` without `dart:io` or `package:http`. SSL pinning, proxy and
+/// cookie-jar management are not supported on the web (those features are
+/// controlled by the browser / CORS).
 class HttpAdapter {
   final ClientConfig config;
   final MemoryCacheStore cacheStore;
   final ApiCookieJar cookieJar;
 
-  final http.Client _client;
-
   HttpAdapter({
     required this.config,
     required this.cacheStore,
     required this.cookieJar,
-  }) : _client = http.Client();
+  });
 
   /// Performs the HTTP request described by [options].
   Future<ApiResponse<T>> send<T>(
@@ -66,75 +64,135 @@ class HttpAdapter {
       throw exc.CancelledException(requestOptions: options);
     }
 
-    final request = files.isNotEmpty || formFields.isNotEmpty
-        ? _buildMultipartRequest(options, files, formFields)
-        : _buildRequest(options);
-
-    // Apply headers
-    for (final e in config.defaultHeaders.entries) {
-      request.headers[e.key] = e.value;
-    }
-    for (final e in options.headers.entries) {
-      request.headers[e.key] = e.value.toString();
-    }
+    // Build body
+    final isMultipart = files.isNotEmpty || formFields.isNotEmpty;
+    final bodyBytes = isMultipart
+        ? _buildMultipartBody(options, files, formFields)
+        : _buildBody(options);
 
     if (onSendProgress != null) {
-      final body = request.bodyBytes;
-      onSendProgress(0, body.length);
+      onSendProgress(0, bodyBytes.length);
     }
 
-    http.StreamedResponse streamedResponse;
+    final completer = async.Completer<html.HttpRequest>();
+    final request = html.HttpRequest();
+
+    request.open(options.method.value, uri.toString());
+    request.responseType = 'arraybuffer';
+
+    // Apply default headers
+    for (final e in config.defaultHeaders.entries) {
+      request.setRequestHeader(e.key, e.value);
+    }
+    // Apply per-request headers
+    for (final e in options.headers.entries) {
+      request.setRequestHeader(e.key, e.value.toString());
+    }
+
+    // Set multipart Content-Type if needed
+    if (isMultipart) {
+      final boundary = 'boundary${DateTime.now().millisecondsSinceEpoch}';
+      final hasContentType =
+          options.headers.keys.any((k) => k.toLowerCase() == 'content-type');
+      if (!hasContentType) {
+        request.setRequestHeader(
+            'Content-Type', 'multipart/form-data; boundary=$boundary');
+      }
+    }
+
+    // Cancellation wiring
+    if (cancelToken != null) {
+      cancelToken.whenCancel.then((_) {
+        if (!completer.isCompleted) {
+          request.abort();
+          completer
+              .completeError(exc.CancelledException(requestOptions: options));
+        }
+      });
+    }
+
+    // Receive progress
+    if (onReceiveProgress != null) {
+      request.onProgress.listen((html.ProgressEvent e) {
+        if (e.loaded != null && e.total != null) {
+          onReceiveProgress(e.loaded!, e.total!);
+        }
+      });
+    }
+
+    request.onLoad.listen((_) {
+      completer.complete(request);
+    });
+
+    request.onError.listen((_) {
+      if (!completer.isCompleted) {
+        completer.completeError(exc.NetworkException(
+          message: 'Network error: request failed',
+          requestOptions: options,
+        ));
+      }
+    });
+
+    // Send the request
     try {
-      streamedResponse = await _client
-          .send(request)
-          .timeout(options.connectTimeout ?? config.connectTimeout);
-    } on async.TimeoutException {
-      throw exc.TimeoutException(requestOptions: options);
-    } on http.ClientException catch (e) {
-      throw exc.NetworkException(
-        message: 'Network error: ${e.message}',
-        requestOptions: options,
-      );
-    } on Exception catch (e) {
+      request.send(bodyBytes);
+    } catch (e) {
       throw exc.NetworkException(
         message: 'Network error: $e',
         requestOptions: options,
       );
     }
 
+    final html.HttpRequest response;
+    try {
+      final timeout = options.receiveTimeout ?? config.receiveTimeout;
+      response = await completer.future.timeout(timeout);
+    } on async.TimeoutException {
+      request.abort();
+      throw exc.TimeoutException(requestOptions: options);
+    }
+
     if (cancelToken != null && cancelToken.isCancelled) {
       throw exc.CancelledException(requestOptions: options);
     }
 
-    http.Response response;
-    try {
-      response = await http.Response.fromStream(streamedResponse)
-          .timeout(options.receiveTimeout ?? config.receiveTimeout);
-    } on async.TimeoutException {
-      throw exc.TimeoutException(requestOptions: options);
-    } on http.ClientException catch (e) {
-      throw exc.NetworkException(
-        message: 'Network error: ${e.message}',
-        requestOptions: options,
-      );
-    }
-
     if (onSendProgress != null) {
-      final total = request.bodyBytes.length;
-      onSendProgress(total, total);
+      onSendProgress(bodyBytes.length, bodyBytes.length);
     }
 
-    final statusCode = response.statusCode;
-    final responseHeaders = Map<String, String>.from(response.headers);
-    final bodyBytes = response.bodyBytes;
+    final statusCode = response.status ?? 0;
+
+    // Parse response headers
+    final responseHeaders = <String, String>{};
+    final headersStr = response.getAllResponseHeaders();
+    if (headersStr.isNotEmpty) {
+      for (final line in headersStr.split('\r\n')) {
+        final idx = line.indexOf(': ');
+        if (idx > 0) {
+          responseHeaders[line.substring(0, idx).toLowerCase()] =
+              line.substring(idx + 2);
+        }
+      }
+    }
+
+    // Get response body bytes
+    final rawResponse = response.response;
+    Uint8List responseBodyBytes;
+    if (rawResponse is ByteBuffer) {
+      responseBodyBytes = Uint8List.view(rawResponse);
+    } else if (rawResponse is List<int>) {
+      responseBodyBytes = Uint8List.fromList(rawResponse);
+    } else {
+      responseBodyBytes = Uint8List(0);
+    }
 
     if (onReceiveProgress != null) {
-      onReceiveProgress(bodyBytes.length, bodyBytes.length);
+      onReceiveProgress(responseBodyBytes.length, responseBodyBytes.length);
     }
 
     final T? data = await _parseResponse<T>(
       options.responseType,
-      Uint8List.fromList(bodyBytes),
+      responseBodyBytes,
       statusCode,
       options,
     );
@@ -153,35 +211,24 @@ class HttpAdapter {
     return apiResponse;
   }
 
-  http.Request _buildRequest(ApiRequestOptions options) {
-    final request = http.Request(options.method.value, options.uri);
+  List<int> _buildBody(ApiRequestOptions options) {
+    if (options.data == null) return [];
 
-    if (options.data != null) {
-      if (options.data is String) {
-        request.body = options.data as String;
-      } else if (options.data is List<int>) {
-        request.bodyBytes = options.data as List<int>;
-      } else {
-        request.body = jsonEncode(options.data);
-        if (request.headers['Content-Type'] == null) {
-          request.headers['Content-Type'] = 'application/json; charset=utf-8';
-        }
-      }
+    if (options.data is String) {
+      return utf8.encode(options.data as String);
+    } else if (options.data is List<int>) {
+      return options.data as List<int>;
+    } else {
+      return utf8.encode(jsonEncode(options.data));
     }
-
-    return request;
   }
 
-  http.Request _buildMultipartRequest(
+  List<int> _buildMultipartBody(
     ApiRequestOptions options,
     List<ApiMultipartFile> files,
     Map<String, String> formFields,
   ) {
-    final request = http.Request(options.method.value, options.uri);
-
     final boundary = 'boundary${DateTime.now().millisecondsSinceEpoch}';
-    request.headers['Content-Type'] = 'multipart/form-data; boundary=$boundary';
-
     final body = <int>[];
     final boundaryBytes = utf8.encode('--$boundary\r\n');
     final finalBoundary = utf8.encode('--$boundary--\r\n');
@@ -204,9 +251,7 @@ class HttpAdapter {
     }
 
     body.addAll(finalBoundary);
-    request.bodyBytes = body;
-
-    return request;
+    return body;
   }
 
   Future<T?> _parseResponse<T>(
@@ -233,5 +278,5 @@ class HttpAdapter {
     }
   }
 
-  void close({bool force = false}) => _client.close();
+  void close({bool force = false}) {}
 }

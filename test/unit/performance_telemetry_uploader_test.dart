@@ -1,12 +1,12 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:api_studio/src/api_client/core/api_studio_performance_uploader.dart';
+import 'package:api_studio/src/api_client/core/simple_http_client.dart';
 import 'package:api_studio/src/domain/entities/frame_metrics.dart';
 import 'package:api_studio/src/domain/entities/memory_metrics.dart';
 import 'package:api_studio/src/domain/entities/performance_snapshot.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
-import 'package:http/testing.dart';
 
 /// Simple in-memory fake so tests never touch real Hive storage.
 class _InMemoryStateStore implements PerformanceUploadStateStore {
@@ -20,6 +20,30 @@ class _InMemoryStateStore implements PerformanceUploadStateStore {
   Future<void> setLastUploadAt(DateTime time) async {
     stored = time;
   }
+}
+
+/// Fake [SimpleHttpClient] that captures request details and returns
+/// a controlled response without making any real network call.
+class _FakeSimpleHttpClient extends SimpleHttpClient {
+  final FutureOr<SimpleHttpResponse> Function(
+      Uri url, Map<String, String> headers, String body) _handler;
+  int requestCount = 0;
+
+  _FakeSimpleHttpClient(this._handler);
+
+  @override
+  Future<SimpleHttpResponse> post(
+    Uri url, {
+    required Map<String, String> headers,
+    required String body,
+    Duration? timeout,
+  }) async {
+    requestCount++;
+    return Future.value(_handler(url, headers, body));
+  }
+
+  @override
+  void close() {}
 }
 
 PerformanceSnapshot _fakeSnapshot() {
@@ -54,11 +78,9 @@ void main() {
 
   group('PerformanceTelemetryUploader — disabled', () {
     test('enablePerformanceMonitoring = false makes zero requests', () async {
-      var requestCount = 0;
-      final client = MockClient((request) async {
-        requestCount++;
-        return http.Response('{}', 200);
-      });
+      final client = _FakeSimpleHttpClient(
+        (_, __, ___) => const SimpleHttpResponse(statusCode: 200, body: '{}'),
+      );
 
       PerformanceTelemetryUploader.debugOverride(
         client: client,
@@ -68,18 +90,16 @@ void main() {
 
       await PerformanceTelemetryUploader.checkAndMaybeUpload(_fakeSnapshot());
 
-      expect(requestCount, 0);
+      expect(client.requestCount, 0);
       expect(PerformanceTelemetryUploader.isEnabled, isFalse);
     });
   });
 
   group('PerformanceTelemetryUploader — interval', () {
     test('does nothing if last upload was 30 minutes ago', () async {
-      var requestCount = 0;
-      final client = MockClient((request) async {
-        requestCount++;
-        return http.Response('{}', 200);
-      });
+      final client = _FakeSimpleHttpClient(
+        (_, __, ___) => const SimpleHttpResponse(statusCode: 200, body: '{}'),
+      );
       final store = _InMemoryStateStore(
         DateTime.now().subtract(const Duration(minutes: 30)),
       );
@@ -92,15 +112,13 @@ void main() {
 
       await PerformanceTelemetryUploader.checkAndMaybeUpload(_fakeSnapshot());
 
-      expect(requestCount, 0);
+      expect(client.requestCount, 0);
     });
 
     test('uploads once interval (persisted 2 hours ago) has elapsed', () async {
-      var requestCount = 0;
-      final client = MockClient((request) async {
-        requestCount++;
-        return http.Response('{}', 200);
-      });
+      final client = _FakeSimpleHttpClient(
+        (_, __, ___) => const SimpleHttpResponse(statusCode: 200, body: '{}'),
+      );
       final store = _InMemoryStateStore(
         DateTime.now().subtract(const Duration(hours: 2)),
       );
@@ -113,17 +131,15 @@ void main() {
 
       await PerformanceTelemetryUploader.checkAndMaybeUpload(_fakeSnapshot());
 
-      expect(requestCount, 1);
+      expect(client.requestCount, 1);
       expect(store.stored, isNotNull);
     });
 
     test('no previous upload timestamp does not trigger an immediate upload',
         () async {
-      var requestCount = 0;
-      final client = MockClient((request) async {
-        requestCount++;
-        return http.Response('{}', 200);
-      });
+      final client = _FakeSimpleHttpClient(
+        (_, __, ___) => const SimpleHttpResponse(statusCode: 200, body: '{}'),
+      );
 
       PerformanceTelemetryUploader.debugOverride(
         client: client,
@@ -133,18 +149,16 @@ void main() {
 
       await PerformanceTelemetryUploader.checkAndMaybeUpload(_fakeSnapshot());
 
-      expect(requestCount, 0);
+      expect(client.requestCount, 0);
     });
   });
 
   group('PerformanceTelemetryUploader — uploadNow', () {
     test('uploads immediately even if last upload was 30 minutes ago',
         () async {
-      var requestCount = 0;
-      final client = MockClient((request) async {
-        requestCount++;
-        return http.Response('{}', 200);
-      });
+      final client = _FakeSimpleHttpClient(
+        (_, __, ___) => const SimpleHttpResponse(statusCode: 200, body: '{}'),
+      );
       final store = _InMemoryStateStore(
         DateTime.now().subtract(const Duration(minutes: 30)),
       );
@@ -157,17 +171,15 @@ void main() {
 
       await PerformanceTelemetryUploader.uploadNow();
 
-      expect(requestCount, 1);
+      expect(client.requestCount, 1);
       expect(store.stored, isNotNull);
     });
 
     test('uploads immediately even with no previous upload timestamp',
         () async {
-      var requestCount = 0;
-      final client = MockClient((request) async {
-        requestCount++;
-        return http.Response('{}', 200);
-      });
+      final client = _FakeSimpleHttpClient(
+        (_, __, ___) => const SimpleHttpResponse(statusCode: 200, body: '{}'),
+      );
 
       PerformanceTelemetryUploader.debugOverride(
         client: client,
@@ -177,15 +189,13 @@ void main() {
 
       await PerformanceTelemetryUploader.uploadNow();
 
-      expect(requestCount, 1);
+      expect(client.requestCount, 1);
     });
 
     test('does nothing when disabled', () async {
-      var requestCount = 0;
-      final client = MockClient((request) async {
-        requestCount++;
-        return http.Response('{}', 200);
-      });
+      final client = _FakeSimpleHttpClient(
+        (_, __, ___) => const SimpleHttpResponse(statusCode: 200, body: '{}'),
+      );
 
       PerformanceTelemetryUploader.debugOverride(
         client: client,
@@ -195,13 +205,15 @@ void main() {
 
       await PerformanceTelemetryUploader.uploadNow();
 
-      expect(requestCount, 0);
+      expect(client.requestCount, 0);
     });
   });
 
   group('PerformanceTelemetryUploader — success / failure', () {
     test('failed upload does not update lastPerformanceUploadAt', () async {
-      final client = MockClient((request) async => http.Response('', 500));
+      final client = _FakeSimpleHttpClient(
+        (_, __, ___) => const SimpleHttpResponse(statusCode: 500, body: ''),
+      );
       final store = _InMemoryStateStore(
         DateTime.now().subtract(const Duration(hours: 2)),
       );
@@ -219,7 +231,9 @@ void main() {
     });
 
     test('successful upload updates lastPerformanceUploadAt', () async {
-      final client = MockClient((request) async => http.Response('{}', 200));
+      final client = _FakeSimpleHttpClient(
+        (_, __, ___) => const SimpleHttpResponse(statusCode: 200, body: '{}'),
+      );
       final store = _InMemoryStateStore(
         DateTime.now().subtract(const Duration(hours: 2)),
       );
@@ -243,11 +257,9 @@ void main() {
   group('PerformanceTelemetryUploader — concurrency', () {
     test('two near-simultaneous calls result in only one network request',
         () async {
-      var requestCount = 0;
-      final client = MockClient((request) async {
-        requestCount++;
+      final client = _FakeSimpleHttpClient((_, __, ___) async {
         await Future<void>.delayed(const Duration(milliseconds: 20));
-        return http.Response('{}', 200);
+        return const SimpleHttpResponse(statusCode: 200, body: '{}');
       });
       final store = _InMemoryStateStore(
         DateTime.now().subtract(const Duration(hours: 2)),
@@ -265,17 +277,21 @@ void main() {
         PerformanceTelemetryUploader.checkAndMaybeUpload(snapshot),
       ]);
 
-      expect(requestCount, 1);
+      expect(client.requestCount, 1);
     });
   });
 
   group('PerformanceTelemetryUploader — request contents', () {
     test('uses Bearer auth with the configured API key and correct URL',
         () async {
-      http.Request? captured;
-      final client = MockClient((request) async {
-        captured = request;
-        return http.Response('{}', 200);
+      Uri? capturedUrl;
+      Map<String, String>? capturedHeaders;
+      String? capturedBody;
+      final client = _FakeSimpleHttpClient((url, headers, body) {
+        capturedUrl = url;
+        capturedHeaders = headers;
+        capturedBody = body;
+        return const SimpleHttpResponse(statusCode: 200, body: '{}');
       });
       final store = _InMemoryStateStore(
         DateTime.now().subtract(const Duration(hours: 2)),
@@ -292,17 +308,17 @@ void main() {
 
       await PerformanceTelemetryUploader.checkAndMaybeUpload(_fakeSnapshot());
 
-      expect(captured, isNotNull);
+      expect(capturedUrl, isNotNull);
       expect(
-        captured!.headers['Authorization'],
+        capturedHeaders!['Authorization'],
         'Bearer my_test_api_key',
       );
       expect(
-        captured!.url.toString(),
+        capturedUrl!.toString(),
         endsWith('/api/v1/performance'),
       );
 
-      final body = jsonDecode(captured!.body) as Map<String, dynamic>;
+      final body = jsonDecode(capturedBody!) as Map<String, dynamic>;
       expect(body['session_duration_ms'], 300000);
       expect(body['health_score'], 92);
       expect(body['jank']['total_frames'], 1000);
