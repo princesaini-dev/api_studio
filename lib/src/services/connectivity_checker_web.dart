@@ -1,5 +1,18 @@
-import 'package:web/web.dart' as web;
+import 'dart:io';
 
 Future<bool> checkConnectivity() async {
-  return web.window.navigator.onLine;
+  try {
+    final socket = await Socket.connect(
+      'cloudflare.com',
+      443,
+      timeout: const Duration(seconds: 1),
+    );
+
+    socket.destroy();
+    return true;
+  } on SocketException {
+    return false;
+  } catch (_) {
+    return false;
+  }
 }
