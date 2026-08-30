@@ -138,6 +138,9 @@ class ApiStudio {
       );
       if (enablePerformanceMonitoring) {
         PerformanceMonitor.instance.start();
+      } else {
+        PerformanceMonitor.instance.stopRecording();
+        PerformanceMonitor.instance.stop();
       }
     } catch (_) {
       // Never let performance telemetry setup affect app startup.

@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
+
 import 'simple_http_client.dart';
 
 import '../../core/constants/app_constants.dart';
@@ -23,8 +25,14 @@ class ApiStudioRemoteLogger {
 
   static String? _apiKey;
   static SimpleHttpClient? _client;
+  static Timer? _uploadTimer;
+  static final List<String> _pendingPayloads = [];
+  static bool _isUploading = false;
 
   static const Duration _timeout = Duration(seconds: 10);
+  static const Duration uploadInterval = Duration(minutes: 5);
+  static const int _maxPendingPayloads = 100;
+  static const int _maxBodyCharacters = 64 * 1024;
 
   static const List<String> _sensitiveHeaders = [
     'authorization',
@@ -40,6 +48,13 @@ class ApiStudioRemoteLogger {
   /// side effects on the rest of the package.
   static void configure(String? apiKey) {
     _apiKey = (apiKey != null && apiKey.trim().isNotEmpty) ? apiKey : null;
+    _uploadTimer?.cancel();
+    _uploadTimer = null;
+    if (!isEnabled) return;
+    _uploadTimer = Timer.periodic(
+      uploadInterval,
+      (_) => unawaited(_uploadPending()),
+    );
   }
 
   /// Whether an API key has been configured and logging is active.
@@ -153,28 +168,40 @@ class ApiStudioRemoteLogger {
         'timestamp': DateTime.now().toUtc().toIso8601String(),
       });
 
-      final client = _client ??= SimpleHttpClient();
-
-      final response = await client.post(
-        Uri.parse(AppConstants.apiStudioLogsUrl),
-        headers: {
-          'Authorization': 'Bearer $apiKey',
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: payload,
-        timeout: _timeout,
-      );
-
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        // ignore: avoid_print
-        print('[API Studio] $url → Log recorded successfully.');
-      } else {
-        // ignore: avoid_print
-        print('[API Studio] $url → Failed to record log.');
+      _pendingPayloads.add(payload);
+      if (_pendingPayloads.length > _maxPendingPayloads) {
+        _pendingPayloads.removeAt(0);
       }
-    } catch (e) {
-      // ignore: avoid_print
+    } catch (_) {}
+  }
+
+  static Future<void> _uploadPending() async {
+    if (!isEnabled || _isUploading || _pendingPayloads.isEmpty) return;
+    final apiKey = _apiKey;
+    if (apiKey == null) return;
+
+    _isUploading = true;
+    try {
+      final client = _client ??= SimpleHttpClient();
+      while (_pendingPayloads.isNotEmpty) {
+        final response = await client.post(
+          Uri.parse(AppConstants.apiStudioLogsUrl),
+          headers: {
+            'Authorization': 'Bearer $apiKey',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: _pendingPayloads.first,
+          timeout: _timeout,
+        );
+        if (response.statusCode < 200 || response.statusCode >= 300) return;
+        _pendingPayloads.removeAt(0);
+        debugPrint('API Studio: API logs uploaded successfully.');
+      }
+    } catch (_) {
+      return;
+    } finally {
+      _isUploading = false;
     }
   }
 
@@ -189,21 +216,26 @@ class ApiStudioRemoteLogger {
 
   static dynamic _safeBody(dynamic body) {
     if (body == null) return null;
-    if (body is String) {
-      try {
-        return jsonDecode(body);
-      } catch (_) {
-        return body;
-      }
-    }
     if (body is List<int>) return '[bytes: ${body.length}]';
-    if (body is Map || body is List) return body;
+
+    final String encoded;
     try {
-      jsonEncode(body);
-      return body;
+      encoded = body is String ? body : jsonEncode(body);
     } catch (_) {
-      return body.toString();
+      return _truncate(body.toString());
     }
+    if (encoded.length > _maxBodyCharacters) return _truncate(encoded);
+    if (body is! String) return body;
+    try {
+      return jsonDecode(body);
+    } catch (_) {
+      return body;
+    }
+  }
+
+  static String _truncate(String value) {
+    if (value.length <= _maxBodyCharacters) return value;
+    return '${value.substring(0, _maxBodyCharacters)}…';
   }
 }
 

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/scheduler.dart';
 
+import '../core/constants/app_constants.dart';
 import '../data/datasources/performance_datasource.dart';
 import '../domain/entities/connectivity_performance.dart';
 import '../domain/entities/frame_metrics.dart';
@@ -26,23 +27,23 @@ import '../domain/entities/startup_metrics.dart';
 /// - All collections are bounded.
 /// - No disk writes or network requests.
 class PerformanceMonitor {
-  PerformanceMonitor._() {
-    _dataSource = createPerformanceDataSource();
-  }
+  PerformanceMonitor._();
 
   static final PerformanceMonitor instance = PerformanceMonitor._();
 
   final StreamController<PerformanceSnapshot> _controller =
       StreamController<PerformanceSnapshot>.broadcast();
 
-  late final PerformanceDataSource _dataSource;
+  PerformanceDataSource? _dataSource;
 
   // ── State ──────────────────────────────────────────────────────────
 
   bool _isMonitoring = false;
   bool _isRecording = false;
+  bool _hasTimingsCallback = false;
   DateTime? _sessionStart;
   DateTime? _recordingStart;
+  DateTime? _appStart;
   Duration? get recordingDuration => _recordingStart != null
       ? DateTime.now().difference(_recordingStart!)
       : null;
@@ -85,7 +86,6 @@ class PerformanceMonitor {
 
   // Startup phases
   final List<StartupPhase> _startupPhases = [];
-  DateTime? _appStart;
 
   // Connectivity
   final List<ConnectivityChangeRecord> _connectivityChanges = [];
@@ -95,13 +95,17 @@ class PerformanceMonitor {
   Timer? _throttleTimer;
   Timer? _memoryTimer;
 
-  static const Duration _throttleInterval = Duration(milliseconds: 500);
-  static const Duration _memoryPollInterval = Duration(seconds: 2);
   static const int _maxGraphPoints = 120;
   static const int _maxTimelineEvents = 200;
   static const int _maxJankyFrames = 50;
   static const double _jankThresholdMs = 16.0;
   static const double _slowFrameThresholdMs = 25.0;
+  static const int _maxScreenTrackers = 50;
+  static const int _maxStartupPhases = 50;
+  static const int _maxConnectivityChanges = 100;
+  static const Duration _memorySampleInterval = Duration(seconds: 10);
+
+  double _intervalMaxFrameTimeMs = 0;
 
   // ── Public API ─────────────────────────────────────────────────────
 
@@ -114,13 +118,21 @@ class PerformanceMonitor {
 
   void start() {
     if (_isMonitoring) return;
+    _dataSource ??= createPerformanceDataSource();
     _isMonitoring = true;
     _sessionStart ??= DateTime.now();
     _appStart ??= DateTime.now();
 
     SchedulerBinding.instance.addTimingsCallback(_onTimings);
-    _memoryTimer = Timer.periodic(_memoryPollInterval, (_) => _pollMemory());
-    _throttleTimer = Timer.periodic(_throttleInterval, (_) => _emitSnapshot());
+    _hasTimingsCallback = true;
+    _memoryTimer = Timer.periodic(
+      _memorySampleInterval,
+      (_) => _pollMemory(),
+    );
+    _throttleTimer = Timer.periodic(
+      AppConstants.performanceRefreshInterval,
+      (_) => _emitSnapshot(),
+    );
 
     _addTimelineEvent(
       PerformanceEventType.appStarted,
@@ -131,18 +143,23 @@ class PerformanceMonitor {
   }
 
   void stop() {
-    if (!_isMonitoring) return;
     _isMonitoring = false;
-    SchedulerBinding.instance.removeTimingsCallback(_onTimings);
+    _isRecording = false;
+    _recordingStart = null;
+    if (_hasTimingsCallback) {
+      SchedulerBinding.instance.removeTimingsCallback(_onTimings);
+      _hasTimingsCallback = false;
+    }
     _memoryTimer?.cancel();
     _memoryTimer = null;
     _throttleTimer?.cancel();
     _throttleTimer = null;
-    _emitSnapshot();
+    clearSession();
+    _dataSource = null;
   }
 
   void startRecording() {
-    if (_isRecording) return;
+    if (!_isMonitoring || _isRecording) return;
     _isRecording = true;
     _recordingStart = DateTime.now();
     _addTimelineEvent(
@@ -188,11 +205,19 @@ class PerformanceMonitor {
     _startupPhases.clear();
     _connectivityChanges.clear();
     _sessionStart = _isMonitoring ? DateTime.now() : null;
+    _appStart = _isMonitoring ? DateTime.now() : null;
     _recordingStart = null;
-    _emitSnapshot();
+    _framesInInterval = 0;
+    _intervalMaxFrameTimeMs = 0;
+    _emitSnapshot(updateAggregates: false);
   }
 
   void markScreenStart(String name) {
+    if (!_isMonitoring || name.isEmpty) return;
+    if (!_screenTrackers.containsKey(name) &&
+        _screenTrackers.length >= _maxScreenTrackers) {
+      _screenTrackers.remove(_screenTrackers.keys.first);
+    }
     _screenTrackers[name] = _ScreenTracker(
       name: name,
       startTime: DateTime.now(),
@@ -208,10 +233,15 @@ class PerformanceMonitor {
   }
 
   void markScreenEnd(String name) {
+    if (!_isMonitoring) return;
     _screenTrackers[name]?.endTime = DateTime.now();
   }
 
   void recordStartupPhase(String name, {Duration? duration}) {
+    if (!_isMonitoring || name.isEmpty) return;
+    if (_startupPhases.length >= _maxStartupPhases) {
+      _startupPhases.removeAt(0);
+    }
     _startupPhases.add(StartupPhase(
       name: name,
       duration: duration,
@@ -220,6 +250,7 @@ class PerformanceMonitor {
   }
 
   void addCustomEvent(String description, {String? metricValue}) {
+    if (!_isMonitoring) return;
     _addTimelineEvent(
       PerformanceEventType.custom,
       description,
@@ -230,7 +261,11 @@ class PerformanceMonitor {
   }
 
   void recordConnectivityChange(bool connected) {
+    if (!_isMonitoring) return;
     _currentConnectivity = connected;
+    if (_connectivityChanges.length >= _maxConnectivityChanges) {
+      _connectivityChanges.removeAt(0);
+    }
     _connectivityChanges.add(ConnectivityChangeRecord(
       timestamp: DateTime.now(),
       connected: connected,
@@ -253,6 +288,7 @@ class PerformanceMonitor {
     bool isSuccess = true,
     bool isTimeout = false,
   }) {
+    if (!_isMonitoring) return;
     final type = isSuccess
         ? PerformanceEventType.apiRequest
         : PerformanceEventType.apiFailed;
@@ -276,6 +312,7 @@ class PerformanceMonitor {
   // ── Internal ───────────────────────────────────────────────────────
 
   void _onTimings(List<FrameTiming> timings) {
+    if (!_isMonitoring) return;
     for (final t in timings) {
       _frameCounter++;
       _totalFrames++;
@@ -330,6 +367,10 @@ class PerformanceMonitor {
         _frameTimeHistory.removeAt(0);
       }
 
+      if (frameTime > _intervalMaxFrameTimeMs) {
+        _intervalMaxFrameTimeMs = frameTime;
+      }
+
       for (final tracker in _screenTrackers.values) {
         if (tracker.endTime != null) continue;
         tracker.frameCount++;
@@ -340,7 +381,8 @@ class PerformanceMonitor {
   }
 
   void _pollMemory() {
-    final mem = _dataSource.getCurrentMemoryUsageBytes();
+    if (!_isMonitoring) return;
+    final mem = _dataSource?.getCurrentMemoryUsageBytes();
     if (mem == null) return;
 
     _lastMemory = mem;
@@ -384,20 +426,25 @@ class PerformanceMonitor {
     }
   }
 
-  void _emitSnapshot() {
+  void _emitSnapshot({bool updateAggregates = true}) {
     if (_controller.isClosed) return;
 
-    // Calculate current FPS from frames since last emit
-    if (_framesInInterval > 0 && _isMonitoring) {
-      _currentFps =
-          (_framesInInterval * 1000 / _throttleInterval.inMilliseconds)
-              .clamp(0.0, 120.0);
+    if (updateAggregates && _framesInInterval > 0 && _isMonitoring) {
+      _currentFps = (_framesInInterval *
+              1000 /
+              AppConstants.performanceRefreshInterval.inMilliseconds)
+          .clamp(0.0, 120.0);
       if (_currentFps < _minFps) _minFps = _currentFps;
       if (_currentFps > _maxFps) _maxFps = _currentFps;
       _fpsHistory.add(_currentFps);
       if (_fpsHistory.length > _maxGraphPoints) {
         _fpsHistory.removeAt(0);
       }
+      _frameTimeHistory.add(_intervalMaxFrameTimeMs);
+      if (_frameTimeHistory.length > _maxGraphPoints) {
+        _frameTimeHistory.removeAt(0);
+      }
+      _intervalMaxFrameTimeMs = 0;
       _framesInInterval = 0;
     }
 
@@ -478,7 +525,10 @@ class PerformanceMonitor {
   }
 
   MemoryMetrics _buildMemoryMetrics() {
-    if (!_dataSource.isMemoryAvailable || _lastMemory == null) {
+    final dataSource = _dataSource;
+    if (dataSource == null ||
+        !dataSource.isMemoryAvailable ||
+        _lastMemory == null) {
       return const MemoryMetrics(isAvailable: false);
     }
 

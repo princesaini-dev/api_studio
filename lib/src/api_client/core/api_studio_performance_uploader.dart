@@ -61,7 +61,7 @@ class HivePerformanceUploadStateStore implements PerformanceUploadStateStore {
 class PerformanceTelemetryUploader {
   PerformanceTelemetryUploader._();
 
-  static const Duration uploadInterval = Duration(hours: 1);
+  static const Duration uploadInterval = Duration(minutes: 5);
   static const Duration _timeout = Duration(seconds: 10);
 
   static bool _enabled = false;
@@ -72,6 +72,7 @@ class PerformanceTelemetryUploader {
   static SimpleHttpClient? _client;
 
   static StreamSubscription<PerformanceSnapshot>? _subscription;
+  static Timer? _uploadTimer;
 
   static bool _isUploadingPerformance = false;
   static DateTime? _lastUploadAt;
@@ -103,14 +104,16 @@ class PerformanceTelemetryUploader {
 
     unawaited(_subscription?.cancel());
     _subscription = null;
+    _uploadTimer?.cancel();
+    _uploadTimer = null;
 
     if (!isEnabled) return;
 
-    // Check the interval whenever a new aggregated snapshot is available,
-    // instead of running a dedicated high-frequency upload timer.
-    _subscription = PerformanceMonitor.instance.snapshotStream.listen(
-      (snapshot) => unawaited(checkAndMaybeUpload(snapshot)),
-      onError: (_) {},
+    _uploadTimer = Timer.periodic(
+      uploadInterval,
+      (_) => unawaited(
+        checkAndMaybeUpload(PerformanceMonitor.instance.currentSnapshot),
+      ),
     );
   }
 
@@ -279,7 +282,12 @@ class PerformanceTelemetryUploader {
         timeout: _timeout,
       );
 
-      return response.statusCode >= 200 && response.statusCode < 300;
+      final isSuccessful =
+          response.statusCode >= 200 && response.statusCode < 300;
+      if (isSuccessful) {
+        debugPrint('API Studio: Performance logs uploaded successfully.');
+      }
+      return isSuccessful;
     } catch (_) {
       return false;
     }
@@ -302,6 +310,8 @@ class PerformanceTelemetryUploader {
   static Future<void> debugReset() async {
     await _subscription?.cancel();
     _subscription = null;
+    _uploadTimer?.cancel();
+    _uploadTimer = null;
     _enabled = false;
     _apiKey = null;
     _client = null;

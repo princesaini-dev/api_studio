@@ -10,13 +10,26 @@ class PerformanceController extends ChangeNotifier {
   final PerformanceRepository repository;
   StreamSubscription<PerformanceSnapshot>? _subscription;
 
-  PerformanceState _state = const PerformanceState();
+  PerformanceState _state;
   PerformanceState get state => _state;
 
-  PerformanceController({required this.repository}) {
-    _subscription = repository.snapshotStream.listen((snapshot) {
-      _onSnapshotUpdated(snapshot);
-    });
+  late final ValueNotifier<PerformanceSnapshot> headerSnapshot;
+  late final ValueNotifier<PerformanceSnapshot> overviewSnapshot;
+  late final ValueNotifier<PerformanceSnapshot> frameSnapshot;
+  late final ValueNotifier<PerformanceSnapshot> memorySnapshot;
+  late final ValueNotifier<PerformanceSnapshot> connectivitySnapshot;
+  late final ValueNotifier<PerformanceSnapshot> scoreSnapshot;
+
+  PerformanceController({required this.repository})
+      : _state = PerformanceState(snapshot: repository.currentSnapshot) {
+    final snapshot = _state.snapshot;
+    headerSnapshot = ValueNotifier(snapshot);
+    overviewSnapshot = ValueNotifier(snapshot);
+    frameSnapshot = ValueNotifier(snapshot);
+    memorySnapshot = ValueNotifier(snapshot);
+    connectivitySnapshot = ValueNotifier(snapshot);
+    scoreSnapshot = ValueNotifier(snapshot);
+    _subscription = repository.snapshotStream.listen(_onSnapshotUpdated);
   }
 
   void _onSnapshotUpdated(PerformanceSnapshot snapshot) {
@@ -28,7 +41,34 @@ class PerformanceController extends ChangeNotifier {
     } else {
       status = PerformanceStatus.stopped;
     }
+    final previous = _state.snapshot;
     _state = _state.copyWith(status: status, snapshot: snapshot);
+    if (previous.isMonitoring != snapshot.isMonitoring ||
+        previous.isRecording != snapshot.isRecording) {
+      headerSnapshot.value = snapshot;
+    }
+    if (previous.frameMetrics != snapshot.frameMetrics ||
+        previous.memoryMetrics != snapshot.memoryMetrics ||
+        previous.startupMetrics != snapshot.startupMetrics ||
+        previous.sessionDuration != snapshot.sessionDuration) {
+      overviewSnapshot.value = snapshot;
+    }
+    if (previous.frameMetrics != snapshot.frameMetrics ||
+        previous.fpsHistory != snapshot.fpsHistory ||
+        previous.frameTimeHistory != snapshot.frameTimeHistory) {
+      frameSnapshot.value = snapshot;
+    }
+    if (previous.memoryMetrics != snapshot.memoryMetrics ||
+        previous.memoryHistoryBytes != snapshot.memoryHistoryBytes) {
+      memorySnapshot.value = snapshot;
+    }
+    if (previous.connectivityPerformance != snapshot.connectivityPerformance) {
+      connectivitySnapshot.value = snapshot;
+    }
+    if (previous.performanceScore != snapshot.performanceScore ||
+        previous.healthGrade != snapshot.healthGrade) {
+      scoreSnapshot.value = snapshot;
+    }
     notifyListeners();
   }
 
@@ -74,6 +114,12 @@ class PerformanceController extends ChangeNotifier {
   @override
   void dispose() {
     _subscription?.cancel();
+    headerSnapshot.dispose();
+    overviewSnapshot.dispose();
+    frameSnapshot.dispose();
+    memorySnapshot.dispose();
+    connectivitySnapshot.dispose();
+    scoreSnapshot.dispose();
     super.dispose();
   }
 }

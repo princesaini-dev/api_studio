@@ -170,8 +170,73 @@ class _RecentJankyFrames extends StatelessWidget {
                 .copyWith(color: theme.textPrimaryColor),
           ),
           const SizedBox(height: Dimensions.sm),
+          _JankFrameChart(snapshot: snapshot, theme: theme),
+          const SizedBox(height: Dimensions.sm),
           _WorstFrameInfo(snapshot: snapshot, theme: theme),
         ],
+      ),
+    );
+  }
+}
+
+class _JankFrameChart extends StatelessWidget {
+  final PerformanceSnapshot snapshot;
+  final ApiInspectorThemeData theme;
+
+  const _JankFrameChart({required this.snapshot, required this.theme});
+
+  static const double _chartHeight = 160;
+  static const double _barWidth = 10;
+  static const double _barSpacing = 4;
+
+  @override
+  Widget build(BuildContext context) {
+    final frames = snapshot.frameTimeHistory;
+    final maxDuration = frames.fold<double>(
+      16,
+      (maximum, duration) => duration > maximum ? duration : maximum,
+    );
+
+    return SizedBox(
+      width: double.infinity,
+      height: _chartHeight,
+      child: ClipRect(
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          reverse: true,
+          itemCount: frames.length,
+          separatorBuilder: (_, __) => const SizedBox(width: _barSpacing),
+          itemBuilder: (context, index) {
+            final duration = frames[frames.length - index - 1];
+            final height =
+                (duration / maxDuration * (_chartHeight - Dimensions.md))
+                    .clamp(2.0, _chartHeight - Dimensions.md);
+            final color = duration > 50
+                ? AppColors.error
+                : duration > 33
+                    ? AppColors.warning
+                    : theme.primaryColor;
+
+            return Align(
+              alignment: Alignment.bottomCenter,
+              child: Tooltip(
+                message: AppStrings.frameDuration(duration),
+                child: SizedBox(
+                  width: _barWidth,
+                  height: height,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(2),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
       ),
     );
   }

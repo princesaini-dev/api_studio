@@ -175,7 +175,7 @@ ApiStudio.showFileExplorer(context);
 
 ### ⚡ Performance Inspector
 
-A lightweight, in-app performance monitor — no external profiler required.
+A lightweight, fully opt-in in-app performance monitor — no external profiler required. Initializing API Studio, API logging, remote log upload, and opening API Logs do not start performance collection.
 
 - FPS — current, average, minimum, maximum
 - Frame time, janky frames, jank rate
@@ -186,17 +186,16 @@ A lightweight, in-app performance monitor — no external profiler required.
 - Performance timeline with event history
 - Overall performance health score with a descriptive grade
 - Start/stop and clear recording sessions
-- Animated, real-time graphs with smooth metric transitions
+- Fixed-height, horizontally scrollable jank history and efficient real-time graphs
+- Bounded frame and memory history to prevent continuous memory growth
 
 ```dart
 ApiStudio.showPerformanceInspector(context);
 
-// Or drive it programmatically:
+// Monitoring starts only after this explicit action:
 ApiStudio.startPerformanceMonitoring();
 ApiStudio.stopPerformanceMonitoring();
 ```
-
-<p align="center"><img src="assets/ss7.png" width="32%"></p>
 
 ### 📊 Performance Monitoring (Remote Telemetry)
 
@@ -209,12 +208,11 @@ await ApiStudio.initialize(
 );
 ```
 
-- **Disabled by default** (`enablePerformanceMonitoring: false`) — with no `apiKey`/flag, zero performance network calls are ever made.
-- Performance metrics (FPS, frame time, jank, memory, startup, health score) are collected **locally** using the existing Performance Inspector engine — nothing new to configure.
+- **Disabled by default** (`enablePerformanceMonitoring: false`) — API Studio initialization, API logging, and automatic log upload do not collect performance data or install frame callbacks.
+- When enabled, FPS, frame time, jank, memory, startup, and runtime health metrics are collected locally using bounded histories.
+- Stopping Performance removes its frame callback and timers and clears retained session data.
 - An aggregated snapshot is uploaded **at most once per hour** — never every few seconds, never on every snapshot.
-- The one-hour interval is persisted locally and **survives app restarts**.
 - Uses the exact same `apiKey` and backend already configured for [Optional Remote API Logging](#-optional-remote-api-logging) — no second API key, no second base URL.
-- Fire-and-forget — a failed performance upload never affects, delays, or throws for your normal API requests.
 
 Conceptually, this uploads to:
 
@@ -228,7 +226,7 @@ POST /api/v1/performance
 
 ```yaml
 dependencies:
-  api_studio: ^1.0.3
+  api_studio: ^1.0.4
 ```
 
 ```bash
@@ -261,7 +259,15 @@ ApiStudio.showNavigation(context);
 
 This opens a single **API Studio** screen with **API Logs**, **Performance**
 and **File Explorer** all accessible through a floating bottom navigation
-bar — no need to push each screen separately.
+bar — no need to push each screen separately. Opening the unified navigation
+or switching to API Logs does not activate Performance monitoring.
+
+### Lightweight dependency footprint
+
+API Studio 1.0.4 reduces runtime dependencies and lazily activates optional
+infrastructure. API logging, remote log uploading, connectivity monitoring,
+and Performance monitoring remain independent, so unused features do not
+start their timers, subscriptions, or collectors.
 
 ### `enableApiClient`
 

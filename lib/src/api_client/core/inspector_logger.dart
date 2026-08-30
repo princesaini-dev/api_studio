@@ -16,6 +16,8 @@ class InspectorLogger {
   final int maxStoredLogs;
   final NotificationService? notificationService;
 
+  static const int _maxRetainedBodyCharacters = 64 * 1024;
+
   const InspectorLogger({
     required this.repository,
     required this.maxStoredLogs,
@@ -32,6 +34,8 @@ class InspectorLogger {
     final durationMs = DateTime.now().millisecondsSinceEpoch -
         startTime.millisecondsSinceEpoch;
     final statusCode = response.statusCode;
+    final requestBody = _encodeBody(options.data);
+    final responseBody = _encodeBody(response.data);
 
     final log = ApiLogEntity(
       id: id,
@@ -39,15 +43,17 @@ class InspectorLogger {
       method: _toHttpMethod(options.method.value),
       requestHeaders: Map<String, dynamic>.from(options.headers),
       queryParams: Map<String, dynamic>.from(options.queryParameters),
-      requestBody: _encodeBody(options.data),
+      requestBody: _truncateBody(requestBody),
       isMultipart: false,
       timestamp: startTime,
       durationMs: durationMs,
       statusCode: statusCode,
-      responseBody: _encodeBody(response.data),
+      responseBody: _truncateBody(responseBody),
       responseHeaders: Map<String, dynamic>.from(response.headers),
-      requestSizeBytes: _encodeBody(options.data)?.length,
-      responseSizeBytes: _encodeBody(response.data)?.length,
+      requestSizeBytes:
+          requestBody == null ? null : utf8.encode(requestBody).length,
+      responseSizeBytes:
+          responseBody == null ? null : utf8.encode(responseBody).length,
       status: statusCode >= 200 && statusCode < 400
           ? LogStatus.success
           : LogStatus.error,
@@ -68,6 +74,9 @@ class InspectorLogger {
   }) async {
     final durationMs = DateTime.now().millisecondsSinceEpoch -
         startTime.millisecondsSinceEpoch;
+    final requestBody = _encodeBody(options.data);
+    final responseBody =
+        error.response == null ? null : _encodeBody(error.response);
 
     final log = ApiLogEntity(
       id: id,
@@ -75,14 +84,15 @@ class InspectorLogger {
       method: _toHttpMethod(options.method.value),
       requestHeaders: Map<String, dynamic>.from(options.headers),
       queryParams: Map<String, dynamic>.from(options.queryParameters),
-      requestBody: _encodeBody(options.data),
+      requestBody: _truncateBody(requestBody),
       isMultipart: false,
       timestamp: startTime,
       durationMs: durationMs,
       statusCode: error.statusCode,
-      responseBody: error.response != null ? _encodeBody(error.response) : null,
+      responseBody: _truncateBody(responseBody),
       responseHeaders: Map<String, dynamic>.from(error.responseHeaders),
-      requestSizeBytes: _encodeBody(options.data)?.length,
+      requestSizeBytes:
+          requestBody == null ? null : utf8.encode(requestBody).length,
       errorMessage: error.message,
       stackTrace: StackTrace.current.toString(),
       status: LogStatus.error,
@@ -136,6 +146,11 @@ class InspectorLogger {
     } catch (_) {
       return data.toString();
     }
+  }
+
+  String? _truncateBody(String? body) {
+    if (body == null || body.length <= _maxRetainedBodyCharacters) return body;
+    return '${body.substring(0, _maxRetainedBodyCharacters)}…';
   }
 }
 

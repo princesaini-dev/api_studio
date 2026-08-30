@@ -96,12 +96,12 @@ void main() {
   });
 
   group('PerformanceTelemetryUploader — interval', () {
-    test('does nothing if last upload was 30 minutes ago', () async {
+    test('does nothing if last upload was 3 minutes ago', () async {
       final client = _FakeSimpleHttpClient(
         (_, __, ___) => const SimpleHttpResponse(statusCode: 200, body: '{}'),
       );
       final store = _InMemoryStateStore(
-        DateTime.now().subtract(const Duration(minutes: 30)),
+        DateTime.now().subtract(const Duration(minutes: 3)),
       );
 
       PerformanceTelemetryUploader.debugOverride(

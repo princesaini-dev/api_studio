@@ -289,7 +289,7 @@ class AppStrings {
   // Performance Inspector - Score
   static const String performanceHealth = 'Performance Health';
   static const String performanceScoreDisclaimer =
-      'API Studio Performance Score - based on available metrics only';
+      'Performance Score - based on available metrics only';
   static const String gradeExcellent = 'Excellent';
   static const String gradeGood = 'Good';
   static const String gradeFair = 'Fair';

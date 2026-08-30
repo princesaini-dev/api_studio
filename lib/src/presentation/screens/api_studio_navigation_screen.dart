@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_strings.dart';
 import '../../theme/api_inspector_theme.dart';
 import '../../theme/api_inspector_theme_data.dart';
-import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/dimensions.dart';
 import 'file_explorer_screen.dart';
@@ -115,13 +114,13 @@ class _FloatingBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final shadowColor = theme.primaryColor.withValues(alpha: 0.8);
+    final shadowColor = theme.primaryColor.withValues(alpha: 0.5);
 
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: Dimensions.xl),
         child: Material(
-          elevation: 3,
+          elevation: 1,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(Dimensions.radiusFull),
           ),
@@ -159,7 +158,7 @@ class _FloatingBottomNav extends StatelessWidget {
                         padding: const EdgeInsets.all(4),
                         child: DecoratedBox(
                           decoration: BoxDecoration(
-                            color: theme.primaryColor.withValues(alpha: 0.12),
+                            color: theme.primaryColor.withValues(alpha: 0.2),
                             borderRadius:
                                 BorderRadius.circular(Dimensions.radiusFull),
                           ),
@@ -202,6 +201,7 @@ class _FloatingBottomNav extends StatelessWidget {
                                     fontWeight: selected
                                         ? FontWeight.w700
                                         : FontWeight.w500,
+                                    fontSize: selected ? 11.5 : 10,
                                   ),
                                   child: Text(tab.label),
                                 ),
