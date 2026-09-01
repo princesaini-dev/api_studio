@@ -1,5 +1,5 @@
 import 'performance_datasource_io.dart'
-    if (dart.library.html) 'performance_datasource_web.dart';
+    if (dart.library.js_interop) 'performance_datasource_web.dart';
 
 abstract class PerformanceDataSource {
   int? getCurrentMemoryUsageBytes();

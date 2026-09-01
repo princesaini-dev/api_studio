@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'connectivity_checker_native.dart'
-    if (dart.library.html) 'connectivity_checker_web.dart';
+    if (dart.library.js_interop) 'connectivity_checker_web.dart';
 
 class ConnectivityService {
   ConnectivityService._();

@@ -1,5 +1,7 @@
 import 'dart:async';
-import 'dart:html' as html;
+import 'dart:js_interop';
+
+import 'package:web/web.dart' as web;
 
 /// A minimal HTTP response returned by [SimpleHttpClient].
 class SimpleHttpResponse {
@@ -11,8 +13,8 @@ class SimpleHttpResponse {
 
 /// Minimal HTTP client used by API Studio's own backend calls.
 ///
-/// Web implementation backed by `dart:html` [html.HttpRequest]
-/// (XMLHttpRequest). On native platforms, a `dart:io`-based implementation
+/// Web implementation backed by `package:web` [web.XMLHttpRequest].
+/// On native platforms, a `dart:io`-based implementation
 /// is used instead (see `simple_http_client_io.dart`).
 class SimpleHttpClient {
   SimpleHttpClient();
@@ -26,7 +28,7 @@ class SimpleHttpClient {
   }) async {
     final completer = Completer<SimpleHttpResponse>();
 
-    final request = html.HttpRequest();
+    final request = web.XMLHttpRequest();
     request.open('POST', url.toString());
 
     for (final e in headers.entries) {
@@ -35,8 +37,8 @@ class SimpleHttpClient {
 
     request.onLoad.listen((_) {
       completer.complete(SimpleHttpResponse(
-        statusCode: request.status ?? 0,
-        body: request.responseText ?? '',
+        statusCode: request.status,
+        body: request.responseText,
       ));
     });
 
@@ -44,7 +46,7 @@ class SimpleHttpClient {
       completer.completeError(NetworkException('Request to $url failed'));
     });
 
-    request.send(body);
+    request.send(body.toJS);
 
     try {
       if (timeout != null) {

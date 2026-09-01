@@ -1,6 +1,6 @@
 import 'package:hive_flutter/hive_flutter.dart';
 import 'connectivity_checker_native.dart'
-    if (dart.library.html) 'connectivity_checker_web.dart';
+    if (dart.library.js_interop) 'connectivity_checker_web.dart';
 import 'connectivity_service.dart';
 import 'failed_api_count_service.dart';
 import '../core/constants/app_constants.dart';
@@ -8,7 +8,7 @@ import '../core/constants/hive_constants.dart';
 import '../data/datasources/hive_datasource.dart';
 import '../data/datasources/file_explorer_datasource.dart'
     if (dart.library.io) '../data/datasources/file_explorer_datasource_io.dart'
-    if (dart.library.html) '../data/datasources/file_explorer_datasource_web.dart';
+    if (dart.library.js_interop) '../data/datasources/file_explorer_datasource_web.dart';
 import '../data/models/api_log_hive_model.dart';
 import '../data/repositories/api_log_repository_impl.dart';
 import '../data/repositories/file_explorer_repository_impl.dart';
@@ -25,7 +25,7 @@ import '../domain/usecases/save_log_usecase.dart';
 import '../services/file_action_service.dart';
 import '../services/file_download_service.dart'
     if (dart.library.io) '../services/file_download_service_io.dart'
-    if (dart.library.html) '../services/file_download_service_web.dart';
+    if (dart.library.js_interop) '../services/file_download_service_web.dart';
 import '../notification/config/notification_config.dart';
 import '../notification/services/notification_service.dart';
 import '../presentation/controllers/edit_run_controller.dart';

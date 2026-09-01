@@ -1,7 +1,9 @@
 import 'dart:async' as async;
 import 'dart:convert';
-import 'dart:html' as html;
+import 'dart:js_interop';
 import 'dart:typed_data';
+
+import 'package:web/web.dart' as web;
 
 import '../cache/cache_store.dart';
 import '../cookie/cookie_jar.dart';
@@ -15,10 +17,10 @@ import '../request/multipart_file.dart';
 
 typedef ProgressCallback = void Function(int count, int total);
 
-/// Low-level HTTP adapter for web builds backed by `dart:html` HttpRequest.
+/// Low-level HTTP adapter for web builds backed by `package:web` XMLHttpRequest.
 ///
-/// Uses `dart:html` [html.HttpRequest] (XMLHttpRequest) so it can run on
-/// `dart:html` without `dart:io` or `package:http`. SSL pinning, proxy and
+/// Uses `package:web` [web.XMLHttpRequest] so it can run on the web
+/// without `dart:io` or `package:http`. SSL pinning, proxy and
 /// cookie-jar management are not supported on the web (those features are
 /// controlled by the browser / CORS).
 class HttpAdapter {
@@ -74,8 +76,8 @@ class HttpAdapter {
       onSendProgress(0, bodyBytes.length);
     }
 
-    final completer = async.Completer<html.HttpRequest>();
-    final request = html.HttpRequest();
+    final completer = async.Completer<web.XMLHttpRequest>();
+    final request = web.XMLHttpRequest();
 
     request.open(options.method.value, uri.toString());
     request.responseType = 'arraybuffer';
@@ -113,10 +115,8 @@ class HttpAdapter {
 
     // Receive progress
     if (onReceiveProgress != null) {
-      request.onProgress.listen((html.ProgressEvent e) {
-        if (e.loaded != null && e.total != null) {
-          onReceiveProgress(e.loaded!, e.total!);
-        }
+      request.onProgress.listen((web.ProgressEvent e) {
+        onReceiveProgress(e.loaded, e.total);
       });
     }
 
@@ -135,7 +135,7 @@ class HttpAdapter {
 
     // Send the request
     try {
-      request.send(bodyBytes);
+      request.send(Uint8List.fromList(bodyBytes).toJS);
     } catch (e) {
       throw exc.NetworkException(
         message: 'Network error: $e',
@@ -143,7 +143,7 @@ class HttpAdapter {
       );
     }
 
-    final html.HttpRequest response;
+    final web.XMLHttpRequest response;
     try {
       final timeout = options.receiveTimeout ?? config.receiveTimeout;
       response = await completer.future.timeout(timeout);
@@ -160,7 +160,7 @@ class HttpAdapter {
       onSendProgress(bodyBytes.length, bodyBytes.length);
     }
 
-    final statusCode = response.status ?? 0;
+    final statusCode = response.status;
 
     // Parse response headers
     final responseHeaders = <String, String>{};
@@ -178,10 +178,8 @@ class HttpAdapter {
     // Get response body bytes
     final rawResponse = response.response;
     Uint8List responseBodyBytes;
-    if (rawResponse is ByteBuffer) {
-      responseBodyBytes = Uint8List.view(rawResponse);
-    } else if (rawResponse is List<int>) {
-      responseBodyBytes = Uint8List.fromList(rawResponse);
+    if (rawResponse != null) {
+      responseBodyBytes = (rawResponse as JSArrayBuffer).toDart.asUint8List();
     } else {
       responseBodyBytes = Uint8List(0);
     }

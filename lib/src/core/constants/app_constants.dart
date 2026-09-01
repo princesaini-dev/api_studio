@@ -2,7 +2,7 @@ class AppConstants {
   AppConstants._();
 
   static const String packageName = 'api_studio';
-  static const String packageVersion = '1.0.4';
+  static const String packageVersion = '1.0.5';
   static const int defaultPageSize = 20;
   static const int maxStoredLogs = 10000;
   static const Duration requestTimeout = Duration(seconds: 30);

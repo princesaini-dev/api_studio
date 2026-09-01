@@ -5,7 +5,7 @@ import '../../domain/entities/file_explorer_entry.dart';
 import '../../domain/repositories/file_explorer_repository.dart';
 import '../datasources/file_explorer_datasource.dart'
     if (dart.library.io) '../datasources/file_explorer_datasource_io.dart'
-    if (dart.library.html) '../datasources/file_explorer_datasource_web.dart';
+    if (dart.library.js_interop) '../datasources/file_explorer_datasource_web.dart';
 
 class FileExplorerRepositoryImpl implements FileExplorerRepository {
   final FileExplorerDataSource _dataSource;

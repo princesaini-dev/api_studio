@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.4
+## 5
 
 ### ✨ Added
 - `ApiStudio.showNavigation(context)` as a single entry point for API Logs, Performance, and File Explorer through a unified floating bottom navigation bar.

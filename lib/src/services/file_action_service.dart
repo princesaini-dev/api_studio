@@ -1,7 +1,7 @@
 import '../domain/repositories/file_explorer_repository.dart';
 import 'file_download_service.dart'
     if (dart.library.io) 'file_download_service_io.dart'
-    if (dart.library.html) 'file_download_service_web.dart';
+    if (dart.library.js_interop) 'file_download_service_web.dart';
 
 class FileActionService {
   final FileExplorerRepository _repository;

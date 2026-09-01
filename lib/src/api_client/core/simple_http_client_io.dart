@@ -13,7 +13,7 @@ class SimpleHttpResponse {
 /// Minimal HTTP client used by API Studio's own backend calls.
 ///
 /// Native implementation backed by `dart:io` [HttpClient]. On web, a
-/// `dart:html`-based implementation is used instead (see
+/// `package:web`-based implementation is used instead (see
 /// `simple_http_client_web.dart`).
 class SimpleHttpClient {
   late final HttpClient _client;
