@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/constants/app_strings.dart';
 import '../../theme/api_inspector_theme.dart';
@@ -56,6 +57,18 @@ class _ApiStudioNavigationScreenState extends State<ApiStudioNavigationScreen> {
     setState(() => _selectedIndex = index);
   }
 
+  Future<void> _openDashboard() async {
+    final opened = await launchUrl(
+      Uri.parse(AppStrings.dashboardUrl),
+      mode: LaunchMode.externalApplication,
+    ).catchError((_) => false);
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(AppStrings.dashboardOpenFailed)),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = ApiInspectorTheme.of(context);
@@ -67,10 +80,93 @@ class _ApiStudioNavigationScreenState extends State<ApiStudioNavigationScreen> {
         children: _screens,
       ),
       bottomNavigationBar: RepaintBoundary(
-        child: _FloatingBottomNav(
-          theme: theme,
-          selectedIndex: _selectedIndex,
-          onTabSelected: _onTabSelected,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _DashboardStrip(theme: theme, onTap: _openDashboard),
+            const SizedBox(height: Dimensions.sm),
+            _FloatingBottomNav(
+              theme: theme,
+              selectedIndex: _selectedIndex,
+              onTabSelected: _onTabSelected,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DashboardStrip extends StatelessWidget {
+  final ApiInspectorThemeData theme;
+  final VoidCallback onTap;
+
+  const _DashboardStrip({required this.theme, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: Dimensions.xl),
+      child: Material(
+        color: theme.primaryColor.withValues(alpha: theme.isDark ? 0.16 : 0.1),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(Dimensions.radiusLg),
+          side: BorderSide(
+            color: theme.primaryColor.withValues(alpha: 0.3),
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          key: const Key('apiStudioDashboardStrip'),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: Dimensions.md,
+              vertical: Dimensions.sm,
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.cloud_outlined,
+                  size: Dimensions.iconLg,
+                  color: theme.primaryColor,
+                ),
+                const SizedBox(width: Dimensions.md),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        AppStrings.dashboardTitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.titleMedium.copyWith(
+                          color: theme.textPrimaryColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        AppStrings.dashboardSubtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: theme.textSecondaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: Dimensions.sm),
+                Icon(
+                  Icons.open_in_new_rounded,
+                  size: Dimensions.iconSm,
+                  color: theme.primaryColor,
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

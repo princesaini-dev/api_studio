@@ -285,6 +285,11 @@ class AppStrings {
   static const String navPerformance = 'Performance';
   static const String navFiles = 'Files';
   static const String apiClient = 'API Client';
+  static const String dashboardTitle = 'View your API logs on Dashboard';
+  static const String dashboardSubtitle =
+      'Sync, monitor & analyze your API activity →';
+  static const String dashboardUrl = 'https://apistudio.cloud/';
+  static const String dashboardOpenFailed = 'Unable to open Dashboard';
 
   // Performance Inspector - Score
   static const String performanceHealth = 'Performance Health';

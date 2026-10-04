@@ -38,6 +38,39 @@ void main() {
     expect(find.text(AppStrings.navFiles), findsOneWidget);
   });
 
+  testWidgets('renders one dashboard awareness strip', (tester) async {
+    await tester.pumpWidget(wrap(const ApiStudioNavigationScreen()));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text(AppStrings.dashboardTitle), findsOneWidget);
+    expect(find.text(AppStrings.dashboardSubtitle), findsOneWidget);
+    expect(find.byKey(const Key('apiStudioDashboardStrip')), findsOneWidget);
+  });
+
+  testWidgets('dashboard strip is tappable', (tester) async {
+    await tester.pumpWidget(wrap(const ApiStudioNavigationScreen()));
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('apiStudioDashboardStrip')));
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.byKey(const Key('apiStudioDashboardStrip')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('dashboard strip does not overflow in constrained layouts',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(600, 640));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(wrap(const ApiStudioNavigationScreen()));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('starts on the Logs tab by default', (tester) async {
     await tester.pumpWidget(wrap(const ApiStudioNavigationScreen()));
     await tester.pump();

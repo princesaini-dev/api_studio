@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.6
+
+### ✨ Added
+- Added a dashboard link inside API Studio to help users discover the API Studio Cloud Dashboard.
+- Added a quick way to open `https://apistudio.cloud/` externally from the unified API Studio interface.
+
+### 🔄 Changed
+- Improved UI stability and fixed minor UI/interaction issues and general bugs.
+
 ## 5
 
 ### ✨ Added

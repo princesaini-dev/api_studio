@@ -226,7 +226,7 @@ POST /api/v1/performance
 
 ```yaml
 dependencies:
-  api_studio: ^1.0.5
+  api_studio: ^1.0.6
 ```
 
 ```bash
@@ -264,7 +264,7 @@ or switching to API Logs does not activate Performance monitoring.
 
 ### Lightweight dependency footprint
 
-API Studio 1.0.5 reduces runtime dependencies and lazily activates optional
+API Studio 1.0.6 reduces runtime dependencies and lazily activates optional
 infrastructure. API logging, remote log uploading, connectivity monitoring,
 and Performance monitoring remain independent, so unused features do not
 start their timers, subscriptions, or collectors.
