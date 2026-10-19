@@ -18,8 +18,9 @@ abstract class ApiLogLocalDataSource {
 
 class HiveApiLogDataSource implements ApiLogLocalDataSource {
   final Box<ApiLogHiveModel> _box;
+  final int maxStoredLogs;
 
-  HiveApiLogDataSource(this._box);
+  HiveApiLogDataSource(this._box, {this.maxStoredLogs = AppConstants.maxStoredLogs});
 
   static Future<Box<ApiLogHiveModel>> openBox() async {
     return Hive.openBox<ApiLogHiveModel>(HiveConstants.apiLogBoxName);
@@ -93,11 +94,11 @@ class HiveApiLogDataSource implements ApiLogLocalDataSource {
   @override
   Future<void> saveLog(ApiLogHiveModel model) async {
     try {
-      if (_box.length >= AppConstants.maxStoredLogs) {
-        final oldest = _box.values.reduce(
-          (a, b) => a.timestamp.isBefore(b.timestamp) ? a : b,
-        );
-        await oldest.delete();
+      if (_box.length >= maxStoredLogs) {
+        final evictCount = (_box.length - maxStoredLogs) + 1;
+        for (var i = 0; i < evictCount && _box.isNotEmpty; i++) {
+          await _box.deleteAt(0);
+        }
       }
       await _box.put(model.id, model);
     } catch (e) {

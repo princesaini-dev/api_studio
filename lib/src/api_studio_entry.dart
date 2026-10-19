@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'notification/config/notification_config.dart';
 import 'services/di_service.dart';
@@ -12,6 +14,8 @@ import 'api_client/core/api_studio_remote_logger.dart';
 import 'api_client/core/api_studio_performance_uploader.dart';
 import 'services/performance_monitor.dart';
 import 'domain/entities/performance_snapshot.dart';
+import 'domain/entities/api_log_entity.dart';
+import 'core/utils/uuid_generator.dart';
 
 class ApiStudio {
   ApiStudio._();
@@ -20,6 +24,7 @@ class ApiStudio {
   static bool _isInitialized = false;
   static bool _enableApiClient = true;
   static String? _baseUrl;
+  static AppLifecycleListener? _lifecycleListener;
 
   /// Whether [initialize] has been called at least once.
   static bool get isInitialized => _isInitialized;
@@ -144,6 +149,17 @@ class ApiStudio {
       }
     } catch (_) {
       // Never let performance telemetry setup affect app startup.
+    }
+
+    try {
+      _lifecycleListener?.dispose();
+      _lifecycleListener = AppLifecycleListener(
+        onHide: () => unawaited(flush()),
+        onPause: () => unawaited(flush()),
+        onDetach: () => unawaited(flush()),
+      );
+    } catch (_) {
+      // Optional lifecycle binding in headless or test environments
     }
 
     _isInitialized = true;
@@ -321,4 +337,131 @@ class ApiStudio {
   /// A broadcast stream of [PerformanceSnapshot] updates.
   static Stream<PerformanceSnapshot> get performanceStream =>
       PerformanceMonitor.instance.snapshotStream;
+
+  // ── Cloud Sync & Universal Logging API ──────────────────────────────
+
+  /// Immediately flushes all pending remote logs to the API Studio Cloud
+  /// portal (`https://apistudio.cloud/`).
+  static Future<void> flush() async {
+    await ApiStudioRemoteLogger.uploadNow();
+  }
+
+  /// Manually logs an HTTP request and response into API Studio.
+  ///
+  /// This stores the log locally in the in-app inspector, triggers configured
+  /// notification providers (e.g. Slack alerts on errors), and sends it to
+  /// the API Studio Cloud Dashboard (`https://apistudio.cloud/`).
+  ///
+  /// Perfect for custom HTTP clients, Dio interceptors, Chopper, GraphQL,
+  /// or Supabase/Firebase network calls:
+  ///
+  /// ```dart
+  /// ApiStudio.log(
+  ///   url: 'https://api.example.com/users',
+  ///   method: 'GET',
+  ///   statusCode: 200,
+  ///   durationMs: 145,
+  ///   responseBody: '{"id": 1}',
+  /// );
+  /// ```
+  static Future<void> log({
+    required String url,
+    required String method,
+    int? statusCode,
+    int? durationMs,
+    Map<String, dynamic> requestHeaders = const {},
+    Map<String, dynamic> queryParameters = const {},
+    dynamic requestBody,
+    Map<String, dynamic> responseHeaders = const {},
+    dynamic responseBody,
+    String? errorMessage,
+    StackTrace? stackTrace,
+    DateTime? timestamp,
+  }) async {
+    final effectiveTime = timestamp ?? DateTime.now();
+    final isSuccess = statusCode != null && statusCode >= 200 && statusCode < 400;
+    final logStatus = isSuccess
+        ? LogStatus.success
+        : (statusCode != null && statusCode > 0
+            ? LogStatus.error
+            : (errorMessage != null ? LogStatus.error : LogStatus.success));
+
+    final String? reqBodyString = _encodeBody(requestBody);
+    final String? resBodyString = _encodeBody(responseBody);
+
+    final entity = ApiLogEntity(
+      id: const UuidGenerator().v4(),
+      url: url,
+      method: _parseHttpMethod(method),
+      requestHeaders: requestHeaders,
+      queryParams: queryParameters,
+      requestBody: _truncateBody(reqBodyString),
+      timestamp: effectiveTime,
+      durationMs: durationMs,
+      statusCode: statusCode,
+      responseBody: _truncateBody(resBodyString),
+      responseHeaders: responseHeaders,
+      requestSizeBytes:
+          reqBodyString == null ? null : utf8.encode(reqBodyString).length,
+      responseSizeBytes:
+          resBodyString == null ? null : utf8.encode(resBodyString).length,
+      errorMessage: errorMessage,
+      stackTrace: stackTrace?.toString(),
+      status: logStatus,
+    );
+
+    if (_isInitialized) {
+      try {
+        await DiService.repository.saveLog(entity);
+        if (entity.status == LogStatus.error &&
+            DiService.notificationService != null) {
+          unawaited(DiService.notificationService!.notifyApiFailed(entity));
+        }
+      } catch (_) {}
+    }
+
+    ApiStudioRemoteLogger.logCustom(
+      url: url,
+      method: method,
+      statusCode: statusCode,
+      requestHeaders: requestHeaders,
+      requestBody: requestBody,
+      responseHeaders: responseHeaders,
+      responseBody: responseBody,
+      error: errorMessage,
+      startTime: effectiveTime,
+      durationMs: durationMs,
+    );
+  }
+
+  static const int _maxRetainedBodyCharacters = 64 * 1024;
+
+  static const Map<String, HttpMethod> _methodMap = {
+    'GET': HttpMethod.get,
+    'POST': HttpMethod.post,
+    'PUT': HttpMethod.put,
+    'PATCH': HttpMethod.patch,
+    'DELETE': HttpMethod.delete,
+    'HEAD': HttpMethod.head,
+    'OPTIONS': HttpMethod.options,
+  };
+
+  static HttpMethod _parseHttpMethod(String method) =>
+      _methodMap[method.toUpperCase().trim()] ?? HttpMethod.get;
+
+  static String? _encodeBody(dynamic data) {
+    if (data == null) return null;
+    if (data is String) return data;
+    if (data is List<int>) return '[bytes: ${data.length}]';
+    try {
+      return jsonEncode(data);
+    } catch (_) {
+      return data.toString();
+    }
+  }
+
+  static String? _truncateBody(String? body) {
+    if (body == null || body.length <= _maxRetainedBodyCharacters) return body;
+    return '${body.substring(0, _maxRetainedBodyCharacters)}…';
+  }
 }

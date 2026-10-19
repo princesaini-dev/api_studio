@@ -52,5 +52,25 @@ void main() {
       expect(curl, contains('curl -X POST'));
       expect(curl, contains("-d '{\"name\":\"test\"}'"));
     });
+
+    test('escapes single quotes using POSIX convention', () {
+      final log = makeLog(
+        headers: {'X-Custom': "It's a test"},
+        body: '{"key": "value\'s test"}',
+      );
+      final curl = CurlGenerator.generate(log);
+      expect(curl, contains(r"-H 'X-Custom: It'\''s a test'"));
+      expect(curl, contains(r"value'\''s test"));
+    });
+
+    test('merges query params with existing URL query params cleanly', () {
+      final log = makeLog(
+        url: 'https://api.example.com/users?page=1',
+        queryParams: {'limit': '10'},
+      );
+      final curl = CurlGenerator.generate(log);
+      expect(curl, contains("https://api.example.com/users?page=1&limit=10"));
+      expect(curl.contains('??'), isFalse);
+    });
   });
 }

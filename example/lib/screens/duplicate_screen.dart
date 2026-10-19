@@ -45,9 +45,11 @@ class _DuplicateScreenState extends State<DuplicateScreen> {
           .catchError((e) =>
               setState(() => _log.add('Request ${i + 1}: ${e.runtimeType}'))),
     );
-
     await Future.wait(futures);
-    ApiStudio.initClient(baseUrl: 'https://jsonplaceholder.typicode.com');
+    ApiStudio.initialize(
+      baseUrl: 'https://jsonplaceholder.typicode.com',
+      enableApiClient: true,
+    );
     setState(() {
       _loading = false;
       _log.add('Done.');

@@ -24,6 +24,20 @@ class JsonFormatter {
     }
   }
 
+  /// Parses and pretty-prints JSON in a single decode pass.
+  static ({bool isValid, String formatted}) format(String? raw) {
+    if (raw == null || raw.trim().isEmpty) {
+      return (isValid: false, formatted: '');
+    }
+    try {
+      final decoded = jsonDecode(raw);
+      const encoder = JsonEncoder.withIndent('  ');
+      return (isValid: true, formatted: encoder.convert(decoded));
+    } catch (_) {
+      return (isValid: false, formatted: raw);
+    }
+  }
+
   static String safeEncode(Object? value) {
     try {
       return jsonEncode(value);

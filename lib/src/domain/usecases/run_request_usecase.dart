@@ -1,9 +1,15 @@
 import 'dart:convert';
-import 'dart:io';
 import '../entities/api_log_entity.dart';
 import '../repositories/api_log_repository.dart';
 import '../../core/usecases/usecase.dart';
 import '../../core/constants/app_constants.dart';
+import '../../api_client/adapters/http_adapter.dart';
+import '../../api_client/cache/cache_store.dart';
+import '../../api_client/cookie/cookie_jar.dart';
+import '../../api_client/core/client_config.dart';
+import '../../api_client/enums/http_method_enum.dart';
+import '../../api_client/exceptions/api_exceptions.dart';
+import '../../api_client/request/api_request_options.dart';
 
 class RunRequestParams {
   final ApiLogEntity originalLog;
@@ -30,6 +36,25 @@ class RunRequestUseCase implements UseCase<ApiLogEntity, RunRequestParams> {
 
   const RunRequestUseCase(this.repository);
 
+  static ApiHttpMethod _toApiHttpMethod(HttpMethod method) {
+    switch (method) {
+      case HttpMethod.get:
+        return ApiHttpMethod.get;
+      case HttpMethod.post:
+        return ApiHttpMethod.post;
+      case HttpMethod.put:
+        return ApiHttpMethod.put;
+      case HttpMethod.patch:
+        return ApiHttpMethod.patch;
+      case HttpMethod.delete:
+        return ApiHttpMethod.delete;
+      case HttpMethod.head:
+        return ApiHttpMethod.head;
+      case HttpMethod.options:
+        return ApiHttpMethod.options;
+    }
+  }
+
   @override
   Future<ApiLogEntity> call(RunRequestParams params) async {
     final stopwatch = Stopwatch()..start();
@@ -48,61 +73,67 @@ class RunRequestUseCase implements UseCase<ApiLogEntity, RunRequestParams> {
         uri = uri.replace(queryParameters: merged);
       }
 
-      final client = HttpClient()
-        ..connectionTimeout = AppConstants.requestTimeout;
+      final schemeAndHost = uri.hasScheme && uri.host.isNotEmpty
+          ? '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}'
+          : '';
 
-      final ioRequest =
-          await client.openUrl(params.method.name.toUpperCase(), uri).timeout(
-                AppConstants.requestTimeout,
-              );
+      final adapter = HttpAdapter(
+        config: ClientConfig(
+          baseUrl: schemeAndHost,
+          connectTimeout: AppConstants.requestTimeout,
+          receiveTimeout: AppConstants.requestTimeout,
+          sendTimeout: AppConstants.requestTimeout,
+        ),
+        cacheStore: MemoryCacheStore(),
+        cookieJar: ApiCookieJar(),
+      );
 
-      // Headers
-      for (final e in params.headers.entries) {
-        try {
-          ioRequest.headers.set(e.key, e.value.toString());
-        } catch (_) {}
-      }
+      final options = ApiRequestOptions(
+        method: _toApiHttpMethod(params.method),
+        baseUrl: schemeAndHost,
+        path: uri.path.isNotEmpty ? uri.path : '/',
+        queryParameters: uri.queryParameters,
+        headers: params.headers,
+        data: params.body,
+        connectTimeout: AppConstants.requestTimeout,
+        receiveTimeout: AppConstants.requestTimeout,
+        sendTimeout: AppConstants.requestTimeout,
+        requestId: params.newId,
+      );
 
-      // Body
-      if (params.body != null && params.body!.isNotEmpty) {
-        final bytes = utf8.encode(params.body!);
-        ioRequest.contentLength = bytes.length;
-        if (ioRequest.headers.value(HttpHeaders.contentTypeHeader) == null) {
-          ioRequest.headers.contentType =
-              ContentType('application', 'json', charset: 'utf-8');
+      final response = await adapter.send<dynamic>(options);
+      statusCode = response.statusCode;
+      responseHeaders = Map<String, dynamic>.from(response.headers);
+      if (response.data != null) {
+        if (response.data is String) {
+          responseBody = response.data as String;
+        } else {
+          try {
+            responseBody = jsonEncode(response.data);
+          } catch (_) {
+            responseBody = response.data.toString();
+          }
         }
-        ioRequest.add(bytes);
       }
-
-      final ioResponse =
-          await ioRequest.close().timeout(AppConstants.requestTimeout);
-
-      // Collect response headers
-      ioResponse.headers.forEach((name, values) {
-        responseHeaders[name] = values.join(', ');
-      });
-
-      // Read body
-      final chunks = <int>[];
-      await for (final chunk in ioResponse) {
-        chunks.addAll(chunk);
-      }
-      final rawBody = utf8.decode(chunks, allowMalformed: true);
-
-      // Try JSON decode, fall back to raw string
-      try {
-        final decoded = jsonDecode(rawBody);
-        responseBody = decoded is String ? decoded : jsonEncode(decoded);
-      } catch (_) {
-        responseBody = rawBody;
-      }
-
-      statusCode = ioResponse.statusCode;
       status = (statusCode >= 200 && statusCode < 400)
           ? LogStatus.success
           : LogStatus.error;
-
-      client.close();
+    } on ApiStudioException catch (e) {
+      statusCode = e.statusCode;
+      errorMessage = e.message;
+      if (e.responseHeaders.isNotEmpty) {
+        responseHeaders = Map<String, dynamic>.from(e.responseHeaders);
+      }
+      if (e.response != null) {
+        try {
+          responseBody = e.response is String
+              ? e.response as String
+              : jsonEncode(e.response);
+        } catch (_) {
+          responseBody = e.response.toString();
+        }
+      }
+      status = LogStatus.error;
     } catch (e) {
       errorMessage = e.toString();
       status = LogStatus.error;

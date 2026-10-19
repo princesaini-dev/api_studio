@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import '../../domain/entities/api_log_entity.dart';
@@ -104,18 +105,6 @@ class InspectorLogger {
 
   Future<void> _saveWithLimit(ApiLogEntity log) async {
     await repository.saveLog(log);
-    final total = await repository.getTotalCount();
-    if (total > maxStoredLogs) {
-      final oldest = await repository.getLogs(
-        GetLogsParams(
-          pageSize: total - maxStoredLogs,
-          sortOrder: SortOrder.oldest,
-        ),
-      );
-      for (final old in oldest) {
-        await repository.deleteLog(old.id);
-      }
-    }
   }
 
   Future<void> _triggerNotification(ApiLogEntity log) async {
@@ -153,6 +142,3 @@ class InspectorLogger {
     return '${body.substring(0, _maxRetainedBodyCharacters)}…';
   }
 }
-
-// Silence lint: unawaited_futures
-void unawaited(Future<void> future) {}

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:api_studio/api_studio.dart';
 import 'package:api_studio/src/api_client/core/api_studio_remote_logger.dart';
+import 'package:api_studio/src/services/di_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../test_helpers/fake_path_provider.dart';
@@ -84,6 +85,36 @@ void main() {
 
       await ApiStudio.initialize(enableApiClient: true);
       expect(ApiStudio.isApiClientEnabled, isTrue);
+    });
+
+    test('ApiStudio.log logs custom requests and ApiStudio.flush completes',
+        () async {
+      await ApiStudio.initialize(
+        apiKey: 'test-key-log',
+        baseUrl: 'https://example.com',
+      );
+
+      await expectLater(
+        ApiStudio.log(
+          url: 'https://example.com/custom/test',
+          method: 'POST',
+          statusCode: 201,
+          durationMs: 42,
+          requestHeaders: {'Content-Type': 'application/json'},
+          requestBody: '{"hello":"world"}',
+          responseBody: '{"success":true}',
+        ),
+        completes,
+      );
+
+      // Verify the log was written to Hive repository
+      final logs = await DiService.repository.getLogs(
+        const GetLogsParams(searchQuery: 'custom/test'),
+      );
+      expect(logs.any((l) => l.url.contains('custom/test')), isTrue);
+
+      // Verify flush executes cleanly
+      await expectLater(ApiStudio.flush(), completes);
     });
   });
 }

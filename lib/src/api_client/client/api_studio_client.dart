@@ -69,18 +69,31 @@ class ApiStudioClient {
   ApiStudioClient._({
     required ClientConfig config,
     required InspectorLogger? logger,
+    MemoryCacheStore? cacheStore,
+    ApiCookieJar? cookieJar,
+  }) : this._internal(
+          config: config,
+          logger: logger,
+          cache: cacheStore ?? MemoryCacheStore(),
+          cookieJar: cookieJar ?? ApiCookieJar(),
+        );
+
+  ApiStudioClient._internal({
+    required ClientConfig config,
+    required InspectorLogger? logger,
+    required MemoryCacheStore cache,
+    required ApiCookieJar cookieJar,
   })  : _config = config,
-        _cache = MemoryCacheStore(),
-        _cookieJar = ApiCookieJar(),
+        _cache = cache,
+        _cookieJar = cookieJar,
         _adapter = HttpAdapter(
           config: config,
-          cacheStore: MemoryCacheStore(),
-          cookieJar: ApiCookieJar(),
+          cacheStore: cache,
+          cookieJar: cookieJar,
         ) {
     if (logger != null) _logger = logger;
   }
 
-  // Intentionally store the outer cookie/cache in the adapter via factory
   factory ApiStudioClient._create(
           ClientConfig config, InspectorLogger? logger) =>
       ApiStudioClient._(config: config, logger: logger);
@@ -549,6 +562,3 @@ class ApiStudioClient {
 
   void close({bool force = false}) => _adapter.close(force: force);
 }
-
-// Silence unawaited_futures lint for fire-and-forget logging
-void unawaited(Future<void>? future) {}

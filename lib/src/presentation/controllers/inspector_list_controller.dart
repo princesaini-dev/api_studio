@@ -28,10 +28,15 @@ class InspectorListController extends ChangeNotifier {
   }) {
     _watchSubscription = repository.watchLogs().listen((_) {
       if (_state.status == InspectorListStatus.success) {
-        loadLogs(refresh: true);
+        _debounceTimer?.cancel();
+        _debounceTimer = Timer(const Duration(milliseconds: 150), () {
+          loadLogs(refresh: true);
+        });
       }
     });
   }
+
+  Timer? _debounceTimer;
 
   GetLogsParams _buildParams(InspectorListState s, {int page = 0}) {
     return GetLogsParams(
@@ -45,11 +50,13 @@ class InspectorListController extends ChangeNotifier {
   }
 
   Future<void> loadLogs({bool refresh = false}) async {
-    _state =
-        _state.copyWith(status: InspectorListStatus.loading, currentPage: 0);
-    notifyListeners();
+    if (!refresh) {
+      _state =
+          _state.copyWith(status: InspectorListStatus.loading, currentPage: 0);
+      notifyListeners();
+    }
     try {
-      final logs = await getLogsUseCase(_buildParams(_state));
+      final logs = await getLogsUseCase(_buildParams(_state, page: 0));
       _state = _state.copyWith(
         status: InspectorListStatus.success,
         logs: logs,
@@ -116,6 +123,7 @@ class InspectorListController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _watchSubscription?.cancel();
     super.dispose();
   }

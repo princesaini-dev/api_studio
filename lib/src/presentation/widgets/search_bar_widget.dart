@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../theme/api_inspector_theme.dart';
 import '../../theme/app_text_styles.dart';
@@ -22,6 +23,7 @@ class SearchBarWidget extends StatefulWidget {
 class _SearchBarWidgetState extends State<SearchBarWidget> {
   late final TextEditingController _controller;
   bool _hasText = false;
+  Timer? _debounceTimer;
 
   @override
   void initState() {
@@ -33,8 +35,16 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
     });
   }
 
+  void _onChanged(String text) {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 250), () {
+      widget.onChanged(text);
+    });
+  }
+
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     if (widget.controller == null) _controller.dispose();
     super.dispose();
   }
@@ -44,7 +54,7 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
     final theme = ApiInspectorTheme.of(context);
     return TextField(
       controller: _controller,
-      onChanged: widget.onChanged,
+      onChanged: _onChanged,
       style: AppTextStyles.bodyMedium.copyWith(color: theme.textPrimaryColor),
       decoration: InputDecoration(
         hintText: widget.hintText,
@@ -57,6 +67,7 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
                 icon: Icon(Icons.close_rounded,
                     color: theme.textSecondaryColor, size: 18),
                 onPressed: () {
+                  _debounceTimer?.cancel();
                   _controller.clear();
                   widget.onChanged('');
                 },

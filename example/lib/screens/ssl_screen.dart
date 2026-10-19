@@ -58,7 +58,10 @@ class _SslScreenState extends State<SslScreen> {
         _isError = true;
       });
     } finally {
-      ApiStudio.initClient(baseUrl: 'https://jsonplaceholder.typicode.com');
+      ApiStudio.initialize(
+        baseUrl: 'https://jsonplaceholder.typicode.com',
+        enableApiClient: true,
+      );
       setState(() => _loading = false);
     }
   }

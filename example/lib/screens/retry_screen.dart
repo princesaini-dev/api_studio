@@ -51,7 +51,10 @@ class _RetryScreenState extends State<RetryScreen> {
       setState(() => _log.add('Error: $e'));
     } finally {
       // Restore original client
-      ApiStudio.initClient(baseUrl: 'https://jsonplaceholder.typicode.com');
+      ApiStudio.initialize(
+        baseUrl: 'https://jsonplaceholder.typicode.com',
+        enableApiClient: true,
+      );
       setState(() => _loading = false);
     }
   }

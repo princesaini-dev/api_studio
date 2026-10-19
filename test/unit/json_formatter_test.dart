@@ -31,5 +31,19 @@ void main() {
       expect(JsonFormatter.isValidJson('not json'), isFalse);
       expect(JsonFormatter.isValidJson(null), isFalse);
     });
+
+    test('format parses and pretty prints in single pass', () {
+      final valid = JsonFormatter.format('{"key":"value"}');
+      expect(valid.isValid, isTrue);
+      expect(valid.formatted, contains('  "key": "value"'));
+
+      final invalid = JsonFormatter.format('plain text');
+      expect(invalid.isValid, isFalse);
+      expect(invalid.formatted, equals('plain text'));
+
+      final empty = JsonFormatter.format(null);
+      expect(empty.isValid, isFalse);
+      expect(empty.formatted, isEmpty);
+    });
   });
 }

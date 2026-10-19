@@ -115,6 +115,27 @@ await ApiStudio.initialize(apiKey: 'YOUR_API_KEY');
 - Logging failures are swallowed silently and never throw
 - Sensitive headers (`Authorization`, `Cookie`, `Set-Cookie`, `X-API-Key`, `Proxy-Authorization`) are stripped before upload
 - Recursive-logging protection — requests to the logging backend itself are never re-logged
+- Real-time sync — debounced uploads ensure logs appear on `https://apistudio.cloud/` in seconds
+- Auto-flush on backgrounding — logs are automatically flushed before the app pauses or exits
+
+### 🔌 Universal Logging (Dio, Http, GraphQL, etc.)
+
+If you use **Dio**, **package:http**, **Chopper**, or any custom HTTP client, you can send requests directly into API Studio (both the in-app inspector and the cloud dashboard) using `ApiStudio.log`:
+
+```dart
+// Inside your Dio interceptor or HTTP wrapper:
+ApiStudio.log(
+  url: 'https://api.example.com/users',
+  method: 'GET',
+  statusCode: 200,
+  durationMs: 145,
+  requestHeaders: {'Accept': 'application/json'},
+  responseBody: response.data,
+);
+
+// Manually flush all pending logs to the cloud:
+await ApiStudio.flush();
+```
 
 ### 🌍 Connectivity Monitoring
 

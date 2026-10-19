@@ -26,11 +26,13 @@ class ApiStudioRemoteLogger {
   static String? _apiKey;
   static SimpleHttpClient? _client;
   static Timer? _uploadTimer;
+  static Timer? _debounceTimer;
   static final List<String> _pendingPayloads = [];
   static bool _isUploading = false;
 
   static const Duration _timeout = Duration(seconds: 10);
   static const Duration uploadInterval = Duration(minutes: 5);
+  static const Duration _debounceInterval = Duration(milliseconds: 1500);
   static const int _maxPendingPayloads = 100;
   static const int _maxBodyCharacters = 64 * 1024;
 
@@ -50,6 +52,8 @@ class ApiStudioRemoteLogger {
     _apiKey = (apiKey != null && apiKey.trim().isNotEmpty) ? apiKey : null;
     _uploadTimer?.cancel();
     _uploadTimer = null;
+    _debounceTimer?.cancel();
+    _debounceTimer = null;
     if (!isEnabled) return;
     _uploadTimer = Timer.periodic(
       uploadInterval,
@@ -59,6 +63,16 @@ class ApiStudioRemoteLogger {
 
   /// Whether an API key has been configured and logging is active.
   static bool get isEnabled => _apiKey != null;
+
+  /// Number of pending payloads awaiting upload to the cloud portal.
+  static int get pendingPayloadCount => _pendingPayloads.length;
+
+  /// Forces an immediate upload of all pending payloads to API Studio Cloud.
+  static Future<void> uploadNow() async {
+    _debounceTimer?.cancel();
+    _debounceTimer = null;
+    await _uploadPending();
+  }
 
   /// Fire-and-forget logging of a completed (successful or HTTP-error)
   /// response.
@@ -90,6 +104,39 @@ class ApiStudioRemoteLogger {
       responseHeaders: error.responseHeaders,
       responseBody: error.response,
       error: error.message,
+    );
+  }
+
+  /// Universal logging entry point for external HTTP clients (Dio, http,
+  /// GraphQL, etc.).
+  static void logCustom({
+    required String url,
+    required String method,
+    int? statusCode,
+    Map<String, dynamic> requestHeaders = const {},
+    dynamic requestBody,
+    Map<String, dynamic>? responseHeaders,
+    dynamic responseBody,
+    String? error,
+    required DateTime startTime,
+    int? durationMs,
+  }) {
+    if (!isEnabled) return;
+    if (_isApiStudioRequest(url)) return;
+
+    unawaited(
+      _send(
+        url: url,
+        method: method,
+        requestHeaders: requestHeaders,
+        requestBody: requestBody,
+        statusCode: statusCode,
+        responseHeaders: responseHeaders,
+        responseBody: responseBody,
+        error: error,
+        startTime: startTime,
+        explicitDurationMs: durationMs,
+      ).catchError((_) {}),
     );
   }
 
@@ -134,6 +181,21 @@ class ApiStudioRemoteLogger {
         url.contains(AppConstants.apiStudioLogsPath);
   }
 
+  static void _scheduleDebounce({bool immediate = false}) {
+    if (!isEnabled) return;
+    if (immediate || _pendingPayloads.length >= 5) {
+      _debounceTimer?.cancel();
+      _debounceTimer = null;
+      unawaited(_uploadPending());
+      return;
+    }
+    if (_debounceTimer != null && _debounceTimer!.isActive) return;
+    _debounceTimer = Timer(_debounceInterval, () {
+      _debounceTimer = null;
+      unawaited(_uploadPending());
+    });
+  }
+
   static Future<void> _send({
     required String url,
     required String method,
@@ -144,12 +206,14 @@ class ApiStudioRemoteLogger {
     dynamic responseBody,
     String? error,
     required DateTime startTime,
+    int? explicitDurationMs,
   }) async {
     final apiKey = _apiKey;
     if (apiKey == null) return;
 
     try {
-      final durationMs = DateTime.now().difference(startTime).inMilliseconds;
+      final durationMs = explicitDurationMs ??
+          DateTime.now().difference(startTime).inMilliseconds;
 
       final payload = jsonEncode({
         'method': method.toUpperCase(),
@@ -172,6 +236,10 @@ class ApiStudioRemoteLogger {
       if (_pendingPayloads.length > _maxPendingPayloads) {
         _pendingPayloads.removeAt(0);
       }
+
+      final isError = error != null ||
+          (statusCode != null && (statusCode < 200 || statusCode >= 400));
+      _scheduleDebounce(immediate: isError);
     } catch (_) {}
   }
 
@@ -184,6 +252,7 @@ class ApiStudioRemoteLogger {
     try {
       final client = _client ??= SimpleHttpClient();
       while (_pendingPayloads.isNotEmpty) {
+        final payload = _pendingPayloads.first;
         final response = await client.post(
           Uri.parse(AppConstants.apiStudioLogsUrl),
           headers: {
@@ -191,12 +260,24 @@ class ApiStudioRemoteLogger {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
           },
-          body: _pendingPayloads.first,
+          body: payload,
           timeout: _timeout,
         );
-        if (response.statusCode < 200 || response.statusCode >= 300) return;
-        _pendingPayloads.removeAt(0);
-        debugPrint('API Studio: API logs uploaded successfully.');
+
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          _pendingPayloads.removeAt(0);
+          debugPrint('API Studio: API logs uploaded successfully.');
+        } else if (response.statusCode >= 400 && response.statusCode < 500) {
+          // Client rejection (e.g. malformed or invalid schema) — discard
+          // poison pill so the rest of the queue continues to upload.
+          _pendingPayloads.removeAt(0);
+          debugPrint(
+            'API Studio: Discarded rejected log payload (status ${response.statusCode}).',
+          );
+        } else {
+          // 5xx server error: pause and retry on the next interval.
+          return;
+        }
       }
     } catch (_) {
       return;
@@ -238,6 +319,3 @@ class ApiStudioRemoteLogger {
     return '${value.substring(0, _maxBodyCharacters)}…';
   }
 }
-
-// Silence unawaited_futures lint for fire-and-forget logging.
-void unawaited(Future<void> future) {}

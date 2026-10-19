@@ -10,30 +10,40 @@ class CurlGenerator {
     buffer.write(" '$uri'");
 
     log.requestHeaders.forEach((key, value) {
-      final sanitized = value.toString().replaceAll("'", r"\'");
+      final sanitized = _escapeSingleQuote(value.toString());
       buffer.write(" \\\n  -H '$key: $sanitized'");
     });
 
     if (log.requestBody != null && log.requestBody!.isNotEmpty) {
-      final body = log.requestBody!.replaceAll("'", r"\'");
+      final body = _escapeSingleQuote(log.requestBody!);
       buffer.write(" \\\n  -d '$body'");
     }
 
     if (log.formData != null && log.formData!.isNotEmpty) {
       log.formData!.forEach((key, value) {
-        buffer.write(" \\\n  -F '$key=$value'");
+        final sanitizedVal = _escapeSingleQuote(value.toString());
+        buffer.write(" \\\n  -F '$key=$sanitizedVal'");
       });
     }
 
     return buffer.toString();
   }
 
+  static String _escapeSingleQuote(String value) {
+    return value.replaceAll("'", r"'\''");
+  }
+
   static String _buildUri(ApiLogEntity log) {
-    if (log.queryParams.isEmpty) return log.url;
-    final query = log.queryParams.entries
-        .map((e) =>
-            '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value.toString())}')
-        .join('&');
-    return '${log.url}?$query';
+    final baseUri = Uri.tryParse(log.url);
+    if (baseUri == null || log.queryParams.isEmpty) {
+      return log.url;
+    }
+    final merged = Map<String, dynamic>.from(baseUri.queryParameters)
+      ..addAll(log.queryParams);
+    return baseUri
+        .replace(
+          queryParameters: merged.map((k, v) => MapEntry(k, v.toString())),
+        )
+        .toString();
   }
 }

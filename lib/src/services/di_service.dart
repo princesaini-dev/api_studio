@@ -76,7 +76,8 @@ class DiService {
     await Hive.initFlutter(HiveConstants.hiveSubDir);
     Hive.registerAdapter(ApiLogHiveModelAdapter());
     final box = await HiveApiLogDataSource.openBox();
-    final dataSource = HiveApiLogDataSource(box);
+    final dataSource =
+        HiveApiLogDataSource(box, maxStoredLogs: _maxStoredLogs);
     _repository = ApiLogRepositoryImpl(dataSource);
     _fileExplorerRepository =
         FileExplorerRepositoryImpl(FileExplorerDataSource());
