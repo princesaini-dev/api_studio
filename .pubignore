@@ -1,0 +1,19 @@
+# When .pubignore exists, pub ignores .gitignore for this directory, so the
+# relevant .gitignore entries are repeated here.
+.DS_Store
+.idea/
+*.iml
+.dart_tool/
+.flutter-plugins-dependencies
+build/
+coverage/
+pubspec.lock
+devtools_options.yaml
+
+
+# Repository tooling.
+.github/
+
+# Example platform build output.
+example/build/
+example/.dart_tool/

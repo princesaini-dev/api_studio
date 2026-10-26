@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/constants/app_strings.dart';
+import '../../core/runtime/api_studio_runtime.dart';
 import '../../domain/entities/file_explorer_entry.dart';
 import '../../services/di_service.dart';
 import '../../theme/api_inspector_theme.dart';
@@ -9,8 +12,8 @@ import '../../theme/api_inspector_theme_data.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/dimensions.dart';
-import '../states/file_explorer_state.dart';
 import '../controllers/file_explorer_controller.dart';
+import '../states/file_explorer_state.dart';
 import '../widgets/breadcrumb_bar.dart';
 import '../widgets/file_explorer/external_open_failure_dialog.dart';
 import '../widgets/file_explorer/file_explorer_empty_state.dart';
@@ -19,6 +22,13 @@ import '../widgets/file_explorer/file_explorer_header.dart';
 import '../widgets/file_explorer/file_explorer_item.dart';
 import '../widgets/file_explorer/file_explorer_loading_state.dart';
 
+/// Read-only browser for the app's sandboxed files.
+///
+/// **Security warning:** this screen can list, open and share files from
+/// your app's private storage — databases, caches, preferences and any
+/// tokens persisted on disk. It only works while API Studio is enabled
+/// (`ApiStudio.initialize(enabled: ...)`, which defaults to debug builds
+/// only). Never enable API Studio in builds distributed to end users.
 class FileExplorerScreen extends StatefulWidget {
   const FileExplorerScreen({super.key});
 
@@ -36,24 +46,34 @@ class FileExplorerScreen extends StatefulWidget {
 }
 
 class _FileExplorerScreenState extends State<FileExplorerScreen> {
-  late final FileExplorerController _controller;
+  FileExplorerController? _controller;
+
+  /// Defense in depth: the screen is also reachable by pushing it directly,
+  /// so it re-checks the master switch instead of relying on callers.
+  bool get _allowed => ApiStudioRuntime.enabled && DiService.isInitialized;
 
   @override
   void initState() {
     super.initState();
-    _controller = DiService.createFileExplorerController();
-    _controller.loadDirectory('');
+    if (!_allowed) return;
+    _controller = DiService.createFileExplorerController()..loadDirectory('');
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _controller?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return FileExplorerView(controller: _controller);
+    final controller = _controller;
+    if (controller == null) {
+      return const Scaffold(
+        body: Center(child: Text(AppStrings.fileExplorerDisabled)),
+      );
+    }
+    return FileExplorerView(controller: controller);
   }
 }
 
@@ -75,7 +95,7 @@ class FileExplorerView extends StatelessWidget {
             return FileExplorerHeader(
               theme: theme,
               isLoading: controller.state.status == FileExplorerStatus.loading,
-              onRefresh: () => controller.refresh(),
+              onRefresh: controller.refresh,
               onBack: () => Navigator.of(context).pop(),
             );
           },
@@ -89,7 +109,7 @@ class FileExplorerView extends StatelessWidget {
               final state = controller.state;
               return BreadcrumbBar(
                 breadcrumbs: state.breadcrumbs,
-                onNavigate: (path) => controller.navigateTo(path),
+                onNavigate: controller.navigateTo,
               );
             },
           ),
@@ -120,7 +140,7 @@ class FileExplorerContent extends StatelessWidget {
             return FileExplorerErrorState(
               theme: theme,
               message: state.errorMessage ?? AppStrings.folderLoadFailed,
-              onRetry: () => controller.refresh(),
+              onRetry: controller.refresh,
             );
           case FileExplorerStatus.empty:
             return FileExplorerEmptyState(theme: theme);
@@ -187,13 +207,13 @@ class FileExplorerList extends StatelessWidget {
       );
     } catch (_) {
       if (!context.mounted) return;
-      showDialog<void>(
+      unawaited(showDialog<void>(
         context: context,
         builder: (ctx) => ExternalOpenFailureDialog(
           theme: theme,
           onDownload: () => _onDownload(context, entry),
         ),
-      );
+      ));
     }
   }
 

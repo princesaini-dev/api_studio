@@ -1,0 +1,28 @@
+name: api_studio_dio
+description: "Dio interceptor for API Studio. One line captures every Dio request into the API Studio in-app inspector and optional cloud dashboard, with redaction."
+version: 1.0.0
+homepage: https://github.com/princesaini-dev/api_studio
+repository: https://github.com/princesaini-dev/api_studio/tree/main/packages/api_studio_dio
+issue_tracker: https://github.com/princesaini-dev/api_studio/issues
+topics:
+  - dio
+  - network
+  - debugging
+  - http
+  - interceptor
+
+environment:
+  sdk: ">=3.6.0 <4.0.0"
+  flutter: ">=3.27.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  api_studio: ^1.1.0
+  dio: ^5.4.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ">=5.0.0 <7.0.0"
+  path_provider_platform_interface: ^2.1.2

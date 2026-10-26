@@ -104,13 +104,13 @@ class HttpAdapter {
 
     // Cancellation wiring
     if (cancelToken != null) {
-      cancelToken.whenCancel.then((_) {
+      async.unawaited(cancelToken.whenCancel.then((_) {
         if (!completer.isCompleted) {
           request.abort();
           completer
               .completeError(exc.CancelledException(requestOptions: options));
         }
-      });
+      }));
     }
 
     // Receive progress

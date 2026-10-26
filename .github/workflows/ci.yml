@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package:
+    name: ${{ matrix.package }} (Flutter ${{ matrix.flutter-label }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [api_studio, api_studio_dio, api_studio_http]
+        flutter-label: [minimum, stable]
+        include:
+          - package: api_studio
+            path: .
+          - package: api_studio_dio
+            path: packages/api_studio_dio
+          - package: api_studio_http
+            path: packages/api_studio_http
+          # Lowest Flutter release allowed by the pubspec constraints.
+          - flutter-label: minimum
+            flutter-version: 3.27.x
+          - flutter-label: stable
+            flutter-version: ''
+    defaults:
+      run:
+        working-directory: ${{ matrix.path }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ matrix.flutter-version }}
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Check formatting
+        if: matrix.package == 'api_studio' && matrix.flutter-label == 'stable'
+        run: dart format --output=none --set-exit-if-changed lib test packages example/lib
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test
+
+      - name: Publish dry run
+        if: matrix.flutter-label == 'stable'
+        run: dart pub publish --dry-run
+
+  example:
+    name: example app
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: example
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze

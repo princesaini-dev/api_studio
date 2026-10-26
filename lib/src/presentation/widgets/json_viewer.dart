@@ -35,7 +35,9 @@ class _JsonViewerState extends State<JsonViewer> {
       setState(() => _copied = true);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_isJson ? 'JSON copied to clipboard' : 'Content copied to clipboard'),
+          content: Text(_isJson
+              ? 'JSON copied to clipboard'
+              : 'Content copied to clipboard'),
           duration: const Duration(seconds: 1),
         ),
       );
@@ -107,13 +109,17 @@ class _JsonViewerState extends State<JsonViewer> {
                     Icon(
                       _copied ? Icons.check_rounded : Icons.copy_rounded,
                       size: 14,
-                      color: _copied ? AppColors.success : theme.textSecondaryColor,
+                      color: _copied
+                          ? AppColors.success
+                          : theme.textSecondaryColor,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       _copied ? 'Copied' : 'Copy',
                       style: AppTextStyles.labelSmall.copyWith(
-                        color: _copied ? AppColors.success : theme.textSecondaryColor,
+                        color: _copied
+                            ? AppColors.success
+                            : theme.textSecondaryColor,
                       ),
                     ),
                   ],

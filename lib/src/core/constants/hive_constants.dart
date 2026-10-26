@@ -1,3 +1,4 @@
+/// Storage constants used by API Studio's local log persistence.
 class HiveConstants {
   HiveConstants._();
 
@@ -9,4 +10,8 @@ class HiveConstants {
   /// once-per-hour upload interval survives app restarts.
   static const String performanceStateBoxName = 'api_studio_performance_state';
   static const String lastPerformanceUploadKey = 'lastPerformanceUploadAt';
+
+  /// Box holding storage metadata (schema version) used for migrations.
+  static const String metaBoxName = 'api_studio_meta';
+  static const String schemaVersionKey = 'schemaVersion';
 }

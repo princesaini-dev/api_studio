@@ -1,5 +1,5 @@
-import '../repositories/api_log_repository.dart';
 import '../../core/usecases/usecase.dart';
+import '../repositories/api_log_repository.dart';
 
 class ClearLogsUseCase implements UseCase<void, NoParams> {
   final ApiLogRepository repository;

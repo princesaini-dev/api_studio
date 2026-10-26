@@ -1,5 +1,5 @@
-import '../repositories/performance_repository.dart';
 import '../../core/usecases/usecase.dart';
+import '../repositories/performance_repository.dart';
 
 class StartPerformanceRecordingUseCase implements UseCase<void, NoParams> {
   final PerformanceRepository repository;

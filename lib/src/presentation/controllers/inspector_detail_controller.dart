@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/utils/curl_generator.dart';
 import '../../domain/repositories/api_log_repository.dart';
 import '../../domain/usecases/delete_log_usecase.dart';
-import '../../core/utils/curl_generator.dart';
 import '../states/inspector_detail_state.dart';
 
 class InspectorDetailController extends ChangeNotifier {

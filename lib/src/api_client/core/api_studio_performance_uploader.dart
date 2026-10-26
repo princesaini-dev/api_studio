@@ -2,14 +2,15 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:hive_flutter/hive_flutter.dart';
-import 'simple_http_client.dart';
+import 'package:hive_ce/hive.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/constants/hive_constants.dart';
+import '../../data/datasources/hive_storage.dart';
 import '../../domain/entities/performance_snapshot.dart';
 import '../../services/performance_monitor.dart';
 import '../models/performance_telemetry.dart';
+import 'simple_http_client.dart';
 
 /// Persists the timestamp of the last successful performance telemetry
 /// upload so the once-per-hour interval survives app restarts.
@@ -22,12 +23,14 @@ abstract class PerformanceUploadStateStore {
 }
 
 class HivePerformanceUploadStateStore implements PerformanceUploadStateStore {
-  Box? _box;
+  Box<dynamic>? _box;
 
-  Future<Box> _openBox() async {
+  Future<Box<dynamic>> _openBox() async {
     final existing = _box;
     if (existing != null && existing.isOpen) return existing;
-    _box = await Hive.openBox(HiveConstants.performanceStateBoxName);
+    _box = await ApiStudioHive.openBox<dynamic>(
+      HiveConstants.performanceStateBoxName,
+    );
     return _box!;
   }
 

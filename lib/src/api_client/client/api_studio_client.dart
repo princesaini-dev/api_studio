@@ -1,11 +1,11 @@
 import 'dart:async' hide TimeoutException;
 
+import '../../core/pipeline/log_pipeline.dart';
 import '../../core/utils/uuid_generator.dart';
-
+import '../../domain/entities/api_log_entity.dart';
 import '../adapters/http_adapter.dart';
 import '../cache/cache_store.dart';
 import '../cookie/cookie_jar.dart';
-import '../core/api_studio_remote_logger.dart';
 import '../core/client_config.dart';
 import '../core/inspector_logger.dart';
 import '../enums/duplicate_strategy_enum.dart';
@@ -38,12 +38,16 @@ export '../request/multipart_file.dart';
 export '../retry/retry_config.dart';
 export '../ssl/ssl_config.dart';
 
-/// Production-grade HTTP client for Flutter applications.
+/// Optional built-in HTTP client, useful for manual testing.
+///
+/// Most apps should keep their existing client and add an interceptor
+/// instead (`ApiStudioDioInterceptor` from `api_studio_dio`, or
+/// `ApiStudioHttpClient` from `api_studio_http`). Use this client when you
+/// want a zero-dependency client that is already wired into the inspector.
 ///
 /// ## Initialization
 /// ```dart
-/// await ApiStudio.init(...);
-/// ApiStudioClient.initialize(baseUrl: 'https://api.example.com');
+/// await ApiStudio.initialize(baseUrl: 'https://api.example.com');
 /// ```
 ///
 /// ## Usage
@@ -413,21 +417,12 @@ class ApiStudioClient {
           final finalResponse = await chain.runResponse<T>(response);
 
           // Log success
-          if (_config.enableLogging) {
-            unawaited(
-              _logger?.logResponse(
-                id: requestId,
-                options: options,
-                response: finalResponse,
-                startTime: startTime,
-              ),
-            );
-          }
-          ApiStudioRemoteLogger.logSuccess(
+          _record(InspectorLogger.buildResponseEntity(
+            id: requestId,
             options: options,
             response: finalResponse,
             startTime: startTime,
-          );
+          ));
 
           _inFlight.remove(dupKey);
           return finalResponse;
@@ -436,25 +431,18 @@ class ApiStudioClient {
               attempt < retryConfig.maxAttempts &&
               retryConfig.shouldRetry(e)) {
             attempt++;
-            await Future.delayed(retryConfig.delay);
+            await Future<void>.delayed(retryConfig.delay);
             continue;
           }
 
           // Interceptor: error phase
           final handled = await chain.runError(e);
-          if (_config.enableLogging) {
-            unawaited(_logger?.logError(
-              id: requestId,
-              options: options,
-              error: handled,
-              startTime: startTime,
-            ));
-          }
-          ApiStudioRemoteLogger.logError(
+          _record(InspectorLogger.buildErrorEntity(
+            id: requestId,
             options: options,
             error: handled,
             startTime: startTime,
-          );
+          ));
           _inFlight.remove(dupKey);
           rethrow;
         }
@@ -468,21 +456,27 @@ class ApiStudioClient {
         message: e.toString(),
         requestOptions: options,
       );
-      if (_config.enableLogging) {
-        unawaited(_logger?.logError(
-          id: requestId,
-          options: options,
-          error: wrapped,
-          startTime: startTime,
-        ));
-      }
-      ApiStudioRemoteLogger.logError(
+      _record(InspectorLogger.buildErrorEntity(
+        id: requestId,
         options: options,
         error: wrapped,
         startTime: startTime,
-      );
+      ));
       throw wrapped;
     }
+  }
+
+  /// Sends a captured request through the shared pipeline: stored locally
+  /// when logging is enabled and a logger is attached, and always eligible
+  /// for (redacted) remote upload.
+  void _record(ApiLogEntity entity) {
+    final logger = _logger;
+    unawaited(LogPipeline.record(
+      entity,
+      store: _config.enableLogging && logger != null,
+      repository: logger?.repository,
+      notificationService: logger?.notificationService,
+    ));
   }
 
   Map<String, dynamic> _buildHeaders(Map<String, dynamic>? perRequest) {

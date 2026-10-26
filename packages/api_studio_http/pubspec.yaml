@@ -1,0 +1,27 @@
+name: api_studio_http
+description: "package:http client wrapper for API Studio. Captures every request into the API Studio in-app inspector and optional cloud dashboard, with redaction."
+version: 1.0.0
+homepage: https://github.com/princesaini-dev/api_studio
+repository: https://github.com/princesaini-dev/api_studio/tree/main/packages/api_studio_http
+issue_tracker: https://github.com/princesaini-dev/api_studio/issues
+topics:
+  - http
+  - network
+  - debugging
+  - inspector
+
+environment:
+  sdk: ">=3.6.0 <4.0.0"
+  flutter: ">=3.27.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  api_studio: ^1.1.0
+  http: ^1.5.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ">=5.0.0 <7.0.0"
+  path_provider_platform_interface: ^2.1.2

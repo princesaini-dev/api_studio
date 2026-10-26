@@ -1,0 +1,5 @@
+# Local development only: resolve api_studio from this repository instead of
+# pub.dev. Not used when the package is consumed from pub.dev.
+dependency_overrides:
+  api_studio:
+    path: ../..

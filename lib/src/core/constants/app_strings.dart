@@ -10,6 +10,12 @@ class AppStrings {
   static const String exportLogs = 'Export';
   static const String exportAsJson = 'Export as JSON';
   static const String exportAsTxt = 'Export as TXT';
+  static const String exportAsHar = 'Export as HAR';
+  static const String apiStudioDisabled =
+      'API Studio is disabled. Enable it via ApiStudio.initialize(enabled: true).';
+  static const String fileExplorerDisabled =
+      'File Explorer is only available while API Studio is enabled.';
+  static const String exportAsPostman = 'Export as Postman collection';
 
   // Search
   static const String searchHint = 'Search by URL or endpoint…';
@@ -115,6 +121,15 @@ class AppStrings {
 
   // Edit & Run screen
   static const String editRunTitle = 'Edit & Run';
+  static const String replayRedactedWarning =
+      'Some values were redacted before storage (***REDACTED***). '
+      'Replace them with real values before running.';
+  static const String replayMultipartWarning =
+      'This was a multipart upload. Files are not stored, so the replay '
+      'is sent without them.';
+  static const String replayTruncatedWarning =
+      'The captured body was truncated. Edit it before running, or the '
+      'server will receive incomplete data.';
   static const String labelEditMethod = 'Method';
   static const String labelEditUrl = 'URL';
   static const String labelEditHeaders = 'Headers';

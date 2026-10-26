@@ -1,12 +1,12 @@
 import 'package:equatable/equatable.dart';
 
+import 'connectivity_performance.dart';
 import 'frame_metrics.dart';
 import 'memory_metrics.dart';
-import 'startup_metrics.dart';
+import 'network_performance.dart';
 import 'performance_event.dart';
 import 'screen_performance.dart';
-import 'network_performance.dart';
-import 'connectivity_performance.dart';
+import 'startup_metrics.dart';
 
 enum PerformanceHealthGrade { excellent, good, fair, poor, insufficientData }
 

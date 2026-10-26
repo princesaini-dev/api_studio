@@ -1,14 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
 import '../../core/constants/app_strings.dart';
 import '../../domain/entities/api_log_entity.dart';
 import '../../services/di_service.dart';
 import '../../theme/api_inspector_theme.dart';
+import '../../theme/api_inspector_theme_data.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/dimensions.dart';
-import '../states/inspector_detail_state.dart';
 import '../controllers/inspector_detail_controller.dart';
+import '../states/inspector_detail_state.dart';
 import '../widgets/curl_preview_sheet.dart';
 import '../widgets/edited_badge.dart';
 import '../widgets/json_viewer.dart';
@@ -139,7 +143,8 @@ class _DetailView extends StatelessWidget {
     );
   }
 
-  AppBar _buildAppBar(BuildContext context, dynamic theme, ApiLogEntity log) {
+  AppBar _buildAppBar(
+      BuildContext context, ApiInspectorThemeData theme, ApiLogEntity log) {
     return AppBar(
       backgroundColor: theme.surfaceColor,
       elevation: 0,
@@ -221,7 +226,7 @@ class _DetailView extends StatelessWidget {
               ),
             );
             if (confirmed == true && context.mounted) {
-              controller.deleteLog();
+              unawaited(controller.deleteLog());
             }
           },
         ),
@@ -367,7 +372,7 @@ class _OverviewTab extends StatelessWidget {
 
 class _StatusSummaryCard extends StatelessWidget {
   final ApiLogEntity log;
-  final dynamic theme;
+  final ApiInspectorThemeData theme;
   const _StatusSummaryCard({required this.log, required this.theme});
 
   Color get _color {
@@ -447,7 +452,7 @@ class _StatusSummaryCard extends StatelessWidget {
 
 class _MetricsRow extends StatelessWidget {
   final ApiLogEntity log;
-  final dynamic theme;
+  final ApiInspectorThemeData theme;
   const _MetricsRow({required this.log, required this.theme});
 
   @override
@@ -494,7 +499,7 @@ class _MetricTile extends StatelessWidget {
   final String label;
   final String value;
   final Color color;
-  final dynamic theme;
+  final ApiInspectorThemeData theme;
   const _MetricTile({
     required this.icon,
     required this.label,
@@ -803,7 +808,7 @@ class _ErrorTab extends StatelessWidget {
 
 class _CopyableBlock extends StatelessWidget {
   final String content;
-  final dynamic theme;
+  final ApiInspectorThemeData theme;
   const _CopyableBlock({required this.content, required this.theme});
 
   @override
@@ -838,7 +843,7 @@ class _EmptyTabState extends StatelessWidget {
   final Color? iconColor;
   final String title;
   final String subtitle;
-  final dynamic theme;
+  final ApiInspectorThemeData theme;
   const _EmptyTabState({
     required this.icon,
     this.iconColor,
@@ -884,7 +889,7 @@ class _EmptyTabState extends StatelessWidget {
 
 class _InfoCard extends StatelessWidget {
   final List<Widget> children;
-  final dynamic theme;
+  final ApiInspectorThemeData theme;
   const _InfoCard({required this.children, required this.theme});
 
   @override
@@ -915,7 +920,7 @@ class _InfoCard extends StatelessWidget {
 class _InfoRow extends StatelessWidget {
   final String label;
   final String value;
-  final dynamic theme;
+  final ApiInspectorThemeData theme;
   const _InfoRow(
       {required this.label, required this.value, required this.theme});
 
@@ -948,7 +953,7 @@ class _InfoRow extends StatelessWidget {
 
 class _SectionTitle extends StatelessWidget {
   final String title;
-  final dynamic theme;
+  final ApiInspectorThemeData theme;
   final String? copyText;
   const _SectionTitle(
       {required this.title, required this.theme, this.copyText});
@@ -1015,7 +1020,7 @@ class _IconInfoRow extends StatelessWidget {
   final String value;
   final bool selectable;
   final Color? valueColor;
-  final dynamic theme;
+  final ApiInspectorThemeData theme;
   const _IconInfoRow({
     required this.icon,
     required this.label,

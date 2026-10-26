@@ -1,38 +1,75 @@
 [![pub package](https://img.shields.io/pub/v/api_studio.svg)](https://pub.dev/packages/api_studio)
-[![Flutter](https://img.shields.io/badge/platform-flutter-02569B.svg)](https://flutter.dev)
+[![CI](https://github.com/princesaini-dev/api_studio/actions/workflows/ci.yml/badge.svg)](https://github.com/princesaini-dev/api_studio/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 <h1 align="center">API Studio</h1>
 
 <p align="center">
-  A powerful all-in-one Flutter developer toolkit for<br>
-  <strong>API Debugging • Monitoring • Testing • Performance Analysis • Developer Utilities</strong>
+  An in-app network inspector for Flutter, with an optional cloud dashboard so QA and developers can look at the same requests.
 </p>
 
-API Studio embeds a full HTTP client, a real-time API inspector, a lightweight performance monitor, and a file explorer directly inside your running app. It's built for Flutter developers and QA engineers who need to debug network traffic, replay requests, and check performance without leaving the app or reaching for external tooling.
+## ⏱️ 30-second quick start
+
+```dart
+await ApiStudio.initialize();
+dio.interceptors.add(ApiStudioDioInterceptor());
+// anywhere:
+ApiStudio.showNavigation(context);
+```
+
+That's it. Every Dio request now appears in the inspector, with secrets redacted. In release builds API Studio is off by default and costs nothing.
+
+### Install
+
+```yaml
+dependencies:
+  api_studio: ^1.1.0
+  api_studio_dio: ^1.0.0    # if you use Dio
+  # api_studio_http: ^1.0.0 # if you use package:http
+```
+
+```dart
+import 'package:api_studio/api_studio.dart';
+import 'package:api_studio_dio/api_studio_dio.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await ApiStudio.initialize();
+  runApp(const MyApp());
+}
+```
+
+Using `package:http`? Wrap your client instead:
+
+```dart
+final client = ApiStudioHttpClient(inner: http.Client());
+```
+
+Using something else (Chopper, GraphQL, gRPC-web, a custom client)? Call [`ApiStudio.log`](#any-other-client-apistudiolog) from wherever you see the response.
+
+> **Why separate packages?** Dart has no optional dependencies. Shipping the Dio interceptor inside `api_studio` would force `dio` on every app. With companion packages, you only pull in the client you actually use.
 
 ---
 
-## ✅ Features at a Glance
+## ✅ Features
 
-| Feature | Status |
+| Feature | |
 |---|:---:|
-| Unified Navigation (`ApiStudio.showNavigation()`) | ✅ |
-| HTTP Client (GET / POST / PUT / PATCH / DELETE / HEAD / OPTIONS) | ✅ |
-| Automatic API Inspector | ✅ |
-| Optional Remote API Logging | ✅ |
-| Connectivity Monitoring | ✅ |
-| Failed API Monitoring | ✅ |
-| cURL Generator | ✅ |
-| Edit & Run (modify + replay requests) | ✅ |
-| Export Logs (JSON / TXT) | ✅ |
-| File Explorer | ✅ |
-| Performance Inspector | ✅ |
-| Optional Remote Performance Telemetry | ✅ |
-
----
-
-## 📸 API Studio in Action
+| Automatic capture for **Dio** (`api_studio_dio`) and **package:http** (`api_studio_http`) | ✅ |
+| Universal `ApiStudio.log(...)` for any other client | ✅ |
+| Request/response headers, body, query, status, timing, errors and stack traces | ✅ |
+| Multipart, binary, oversized (truncated), cancelled and timed-out requests | ✅ |
+| **Redaction** of headers, JSON keys and query params before storage, upload and export | ✅ |
+| Search, filter by method/status, sort | ✅ |
+| **Edit & Run**: modify and replay any captured request | ✅ |
+| Copy as **cURL** | ✅ |
+| Export as **JSON**, **TXT**, **HAR 1.2** and **Postman Collection v2.1** | ✅ |
+| Floating debug button, and opening without a `BuildContext` | ✅ |
+| Performance Inspector: FPS, jank, frame times, memory, startup | ✅ |
+| Read-only File Explorer for the app sandbox | ✅ |
+| Optional cloud dashboard: [apistudio.cloud](https://apistudio.cloud/) | ✅ |
+| Connectivity and failed-API streams, Slack/callback alerts on failures | ✅ |
+| Release-safe: no-op by default outside debug builds | ✅ |
 
 <p align="center">
   <img src="assets/ss1.png" width="30%">
@@ -41,290 +78,214 @@ API Studio embeds a full HTTP client, a real-time API inspector, a lightweight p
 </p>
 <p align="center"><sub>API Inspector list · Request detail · Performance Inspector</sub></p>
 
----
-
-## Everything you need to debug your Flutter app
-
-### 🌐 API Client
-
-A built-in HTTP client, wired directly into the API Inspector — every request made through it is captured automatically.
-
-| Capability | Supported |
-|---|:---:|
-| GET / POST / PUT / PATCH / DELETE / HEAD / OPTIONS | ✅ |
-| Multipart uploads | ✅ |
-| File downloads | ✅ |
-| Custom headers | ✅ |
-| Query parameters | ✅ |
-| Authorization | ✅ |
-| Request timeout | ✅ |
-| Retry policy | ✅ |
-| Base URL configuration | ✅ |
+### Opening API Studio
 
 ```dart
-await ApiStudio.initialize(
-  baseUrl: 'https://api.example.com',
-  enableApiClient: true, // default
-);
+ApiStudio.showNavigation(context);           // Logs + Performance + Files
+ApiStudio.show(context);                     // Logs only
+ApiStudio.showPerformanceInspector(context);
+ApiStudio.showFileExplorer(context);
 
-final response = await ApiStudioClient.instance.get('/posts');
+// Without a BuildContext:
+MaterialApp(navigatorKey: ApiStudio.navigatorKey, ...);
+ApiStudio.open();
 
-await ApiStudioClient.instance.post(
-  '/login',
-  data: {'email': 'john@example.com', 'password': '123456'},
+// Draggable floating button (e.g. from initState, after the first frame):
+WidgetsBinding.instance.addPostFrameCallback(
+  (_) => ApiStudio.showFloatingButton(context),
 );
 ```
 
-### 📡 API Inspector
+Want shake-to-open? API Studio deliberately doesn't depend on a sensors plugin. Wire your favorite shake detector to `ApiStudio.open()`.
 
-Every request made through `ApiStudioClient` is captured automatically — no extra configuration required.
-
-- Request/response headers, body, and query parameters
-- Status code and response time
-- Error details and stack traces
-- Search by URL/endpoint
-- Filter by HTTP method and status
-- JSON formatting with copy-to-clipboard
-- Delete individual logs
-
-```dart
-ApiStudio.show(context);
-```
+### Inspector, Edit & Run, cURL
 
 <p align="center">
-  <img src="assets/ss1.png" width="30%">
-  <img src="assets/ss2.png" width="30%">
   <img src="assets/ss3.png" width="30%">
-</p>
-<p align="center">
   <img src="assets/ss4.png" width="30%">
   <img src="assets/ss5.png" width="30%">
 </p>
-<p align="center"><sub>List · Overview · Request · Response · Error</sub></p>
 
-### 📤 Optional Remote API Logging
+- Every captured request can be copied as a POSIX-safe cURL command.
+- **Edit & Run** lets you change the method, URL, headers, query or body and send the request again, including requests captured from Dio and http. Values that were redacted before storage are flagged, so you can re-enter them first. Multipart files and truncated bodies are flagged too.
 
-Pass an API key to also forward API execution logs to the API Studio backend:
+### � Export logs
+
+From the inspector's share menu: **JSON**, **TXT**, **HAR** (open in Chrome DevTools, Charles, Proxyman, Insomnia…) or **Postman collection**. Exports always re-apply your redaction rules.
+
+### ⚡ Performance Inspector
+
+Opt-in, on-device performance monitoring: current/average/min/max FPS, frame time, janky frames and jank rate, UI and raster thread time, memory (where available), startup phases, per-screen tracking, a timeline and an overall health score. Histories are bounded, so memory can't grow without limit.
+
+```dart
+await ApiStudio.initialize(enablePerformanceMonitoring: true);
+// or toggle at runtime:
+ApiStudio.startPerformanceMonitoring();
+ApiStudio.stopPerformanceMonitoring();
+```
+
+### 📁 File Explorer
+
+A read-only browser for your app's sandbox: breadcrumbs, open with the OS handler, and download/share.
+
+> ⚠️ **Do not ship the File Explorer to end users.** It can list and share private files (databases, caches, persisted tokens). It only works while API Studio is enabled, which defaults to debug builds only.
+
+<p align="center"><img src="assets/ss6.png" width="30%"></p>
+
+---
+
+## 🤔 Why API Studio?
+
+- **Proxy tools** (Charles, Proxyman, mitmproxy) need proxy and certificate setup on every device, and struggle with certificate pinning.
+- **Flutter DevTools' network tab** needs a debugger attached to the app.
+- **Other in-app inspectors** show traffic on the device only.
+
+API Studio gives you an **in-app inspector** that works on any build you choose to enable, plus an optional **shared cloud dashboard**. A QA engineer reproduces a bug, and the developer sees the exact (redacted) requests on [apistudio.cloud](https://apistudio.cloud/) without needing the device or a screen recording.
+
+---
+
+## ☁️ Cloud dashboard (optional)
+
+Pass an API key from [apistudio.cloud](https://apistudio.cloud/) to forward captured logs to your team's dashboard:
 
 ```dart
 await ApiStudio.initialize(apiKey: 'YOUR_API_KEY');
+await ApiStudio.flush(); // optional: push pending logs immediately
 ```
 
-- Optional — remote logging stays fully disabled without a key
-- Fire-and-forget — never blocks or delays your requests
-- Logging failures are swallowed silently and never throw
-- Sensitive headers (`Authorization`, `Cookie`, `Set-Cookie`, `X-API-Key`, `Proxy-Authorization`) are stripped before upload
-- Recursive-logging protection — requests to the logging backend itself are never re-logged
-- Real-time sync — debounced uploads ensure logs appear on `https://apistudio.cloud/` in seconds
-- Auto-flush on backgrounding — logs are automatically flushed before the app pauses or exits
+- Off unless you pass an `apiKey`.
+- Uploads only already-redacted logs. Fire-and-forget: it never blocks, delays or throws into your app.
+- Debounced near-real-time sync (immediate on errors), with auto-flush when the app is backgrounded.
+- Requests to the API Studio backend itself are never captured.
+- Optional aggregated performance telemetry (`enablePerformanceMonitoring: true`), uploaded at most once per interval.
 
-### 🔌 Universal Logging (Dio, Http, GraphQL, etc.)
+---
 
-If you use **Dio**, **package:http**, **Chopper**, or any custom HTTP client, you can send requests directly into API Studio (both the in-app inspector and the cloud dashboard) using `ApiStudio.log`:
+## 🔒 Privacy and data
+
+**What is collected:** for each captured request, the URL, method, request/response headers, query parameters, bodies (multipart files are described, never stored; binary bodies become a size placeholder), status code, duration, error message and stack trace.
+
+**Where it goes:**
+
+| Destination | When |
+|---|---|
+| Local storage on the device (`hive_ce`, unencrypted, `<app documents>/api_studio`) | Whenever API Studio is enabled |
+| [apistudio.cloud](https://apistudio.cloud/) | Only if you pass `apiKey` |
+| Slack / your callback | Only if you configure `notificationConfig`, and only for failed requests |
+
+**What is redacted** before local storage, before upload, and in cURL and every export:
+
+- **Headers** (case-insensitive): `Authorization`, `Cookie`, `Set-Cookie`, `X-API-Key`, `Proxy-Authorization`.
+- **JSON body keys, form fields and query parameters**, matched recursively and case-insensitively, ignoring `_`/`-`: `password`, `token`, `access_token`, `refresh_token`, `secret`, `api_key`, `authorization`, `card_number`, `cvv`.
+- Values become `***REDACTED***`. Add your own keys or a custom hook:
 
 ```dart
-// Inside your Dio interceptor or HTTP wrapper:
-ApiStudio.log(
+await ApiStudio.initialize(
+  redaction: RedactionConfig(
+    redactHeaders: ['X-Session-Id'],
+    redactBodyKeys: ['ssn', 'pin'],
+    redactor: (log) => log.copyWith(
+      url: log.url.replaceAll(RegExp(r'/users/\d+'), '/users/:id'),
+    ),
+  ),
+);
+```
+
+Redaction is key-based. Secrets inside free-form text, URL path segments or error messages are not detected; use the `redactor` hook for those.
+
+**How long it is kept:** 500 logs or 7 days by default, whichever comes first, with bodies capped at 1 MB each and ~50 MB in total.
+
+**How to disable:**
+
+- Remote logging: omit `apiKey`.
+- Everything: `ApiStudio.initialize(enabled: false)`. This is already the default in release builds. When disabled there is no storage, no timers, no frame callbacks, no network and no UI, and the interceptors pass requests straight through.
+
+See [SECURITY.md](SECURITY.md) for the full threat model.
+
+---
+
+## ⚙️ Advanced configuration
+
+```dart
+await ApiStudio.initialize(
+  enabled: kDebugMode,              // master switch (default). Use `true` for QA builds.
+  apiKey: null,                     // apistudio.cloud key; null = no upload
+  redaction: const RedactionConfig(),
+  maxStoredLogs: 500,
+  logRetention: const Duration(days: 7),
+  maxBodyBytes: 1024 * 1024,
+  navigatorKey: myNavigatorKey,     // for ApiStudio.open() / floating button
+  theme: const ApiInspectorThemeData(),
+  enablePerformanceMonitoring: false,
+  enableConnectivityStream: false,
+  enableFailedApiStream: false,
+  notificationConfig: NotificationConfig(
+    slackWebhook: 'https://hooks.slack.com/…',
+    onApiFailed: (log) => debugPrint('API failed: ${log.url}'),
+  ),
+  // Optional built-in client (see below):
+  enableApiClient: true,
+  baseUrl: 'https://api.example.com',
+);
+```
+
+Calling `initialize` again is safe: the latest values apply.
+
+### Any other client: `ApiStudio.log`
+
+```dart
+await ApiStudio.log(
   url: 'https://api.example.com/users',
   method: 'GET',
   statusCode: 200,
   durationMs: 145,
   requestHeaders: {'Accept': 'application/json'},
-  responseBody: response.data,
-);
-
-// Manually flush all pending logs to the cloud:
-await ApiStudio.flush();
-```
-
-### 🌍 Connectivity Monitoring
-
-```dart
-await ApiStudio.initialize(enableConnectivityStream: true);
-
-final isOnline = await ApiStudio.isInternetConnected();
-
-ApiStudio.internetConnectivityStream.listen((isOnline) {
-  // React to connectivity changes
-});
-```
-
-> `internetConnectivityStream` requires `enableConnectivityStream: true` during initialization. `isInternetConnected()` always works as a one-off check, regardless of that flag.
-
-### 📈 Failed API Monitoring
-
-```dart
-await ApiStudio.initialize(enableFailedApiStream: true);
-
-final failedCount = ApiStudio.failedApiCount;
-
-ApiStudio.failedApiCountStream.listen((count) {
-  // Update a badge, trigger an alert, etc.
-});
-```
-
-### 📝 cURL Generator
-
-Every captured request can be converted into a ready-to-use cURL command — useful for sharing with backend teams, QA testing, or debugging from a terminal.
-
-### � Export Logs
-
-Export the full request history for sharing or offline review:
-
-- JSON
-- Plain text (TXT)
-
-### ⚡ Edit & Run
-
-Modify an intercepted request — headers, query parameters, or body — directly from the API Inspector, then run it again instantly without touching your application code.
-
-### 📁 File Explorer
-
-A lightweight, read-only browser for application-internal files and folders — handy for QA and debugging without a native file manager.
-
-- Browse folders and files with breadcrumb navigation
-- Open files externally using the platform's default handler (file opening is delegated entirely to the OS; API Studio does not render or parse file contents)
-- Download files with platform-aware behavior — system Downloads folder on Android/desktop, share sheet on iOS
-- Download confirmation dialog with success/failure feedback
-- Graceful fallback to download when external opening isn't available
-
-```dart
-ApiStudio.showFileExplorer(context);
-```
-
-<p align="center"><img src="assets/ss6.png" width="32%"></p>
-
-### ⚡ Performance Inspector
-
-A lightweight, fully opt-in in-app performance monitor — no external profiler required. Initializing API Studio, API logging, remote log upload, and opening API Logs do not start performance collection.
-
-- FPS — current, average, minimum, maximum
-- Frame time, janky frames, jank rate
-- UI thread time, raster thread time
-- Memory usage and peak memory *(availability depends on platform)*
-- App startup phase timing
-- Per-screen performance tracking
-- Performance timeline with event history
-- Overall performance health score with a descriptive grade
-- Start/stop and clear recording sessions
-- Fixed-height, horizontally scrollable jank history and efficient real-time graphs
-- Bounded frame and memory history to prevent continuous memory growth
-
-```dart
-ApiStudio.showPerformanceInspector(context);
-
-// Monitoring starts only after this explicit action:
-ApiStudio.startPerformanceMonitoring();
-ApiStudio.stopPerformanceMonitoring();
-```
-
-### 📊 Performance Monitoring (Remote Telemetry)
-
-Optionally upload **aggregated** performance snapshots to the API Studio backend, so you can track app health over time without leaving your own analytics stack out of the loop.
-
-```dart
-await ApiStudio.initialize(
-  apiKey: 'YOUR_API_KEY',
-  enablePerformanceMonitoring: true,
+  responseBody: response.body,   // String, Map/List, or List<int> bytes
 );
 ```
 
-- **Disabled by default** (`enablePerformanceMonitoring: false`) — API Studio initialization, API logging, and automatic log upload do not collect performance data or install frame callbacks.
-- When enabled, FPS, frame time, jank, memory, startup, and runtime health metrics are collected locally using bounded histories.
-- Stopping Performance removes its frame callback and timers and clears retained session data.
-- An aggregated snapshot is uploaded **at most once per hour** — never every few seconds, never on every snapshot.
-- Uses the exact same `apiKey` and backend already configured for [Optional Remote API Logging](#-optional-remote-api-logging) — no second API key, no second base URL.
+It goes through the same pipeline as the interceptors (redaction → truncation → storage → upload). It's a no-op when disabled and never throws.
 
-Conceptually, this uploads to:
+### Built-in `ApiStudioClient` (optional, useful for manual testing)
 
-```text
-POST /api/v1/performance
+If you just want a quick client that is already wired into the inspector, without adding Dio or http, API Studio includes one. It supports retries, caching, cookies, multipart uploads, downloads and duplicate-request strategies.
+
+```dart
+await ApiStudio.initialize(baseUrl: 'https://api.example.com'); // enableApiClient defaults to true
+final res = await ApiStudioClient.instance.get<Map<String, dynamic>>('/posts/1');
+```
+
+Pass `enableApiClient: false` if you don't use it; nothing client-related is then created. If you rely on `ApiStudioClient` for real traffic, it keeps working when API Studio is disabled; its requests just aren't logged.
+
+### Connectivity and failed-API streams
+
+```dart
+await ApiStudio.initialize(enableConnectivityStream: true, enableFailedApiStream: true);
+ApiStudio.internetConnectivityStream.listen((online) { /* … */ });
+ApiStudio.failedApiCountStream.listen((count) { /* update a badge */ });
+final online = await ApiStudio.isInternetConnected(); // always available
+```
+
+### Name clashes
+
+`package:api_studio` exports the built-in client's types, including `CancelToken`, `ProgressCallback` and `TimeoutException`. If a file also imports Dio or `dart:async`'s `TimeoutException`, hide the ones you don't need:
+
+```dart
+import 'package:api_studio/api_studio.dart' hide CancelToken, ProgressCallback, TimeoutException;
 ```
 
 ---
 
-## 📦 Installation
+## ⬆️ Migrating from 1.0.x
 
-```yaml
-dependencies:
-  api_studio: ^1.0.6
-```
+- **Release builds are now off by default.** If you used API Studio in release/QA builds, pass `enabled: true`.
+- **Replace manual `ApiStudio.log` calls in Dio interceptors** with `ApiStudioDioInterceptor` from `api_studio_dio`.
+- `ApiStudio.init(...)` is deprecated: use `ApiStudio.initialize(...)`.
+- Existing logs are migrated automatically (`hive` → `hive_ce`) and re-redacted on first launch. Unreadable data is cleared instead of crashing.
+- The default `maxStoredLogs` is now 500 (was 10,000).
 
-```bash
-flutter pub get
-```
-
-## 🚀 Quick Start
-
-Configure everything — API key, backend base URL, and the built-in API
-Client — through a single unified call, then open the entire toolkit from a
-single entry point:
-
-```dart
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await ApiStudio.initialize(
-    apiKey: 'YOUR_API_KEY',       // optional
-    baseUrl: 'https://example.com',
-    enableApiClient: true,
-  );
-  runApp(const MyApp());
-}
-```
-
-Then, anywhere inside your widget tree:
-
-```dart
-ApiStudio.showNavigation(context);
-```
-
-This opens a single **API Studio** screen with **API Logs**, **Performance**
-and **File Explorer** all accessible through a floating bottom navigation
-bar — no need to push each screen separately. Opening the unified navigation
-or switching to API Logs does not activate Performance monitoring.
-
-### Lightweight dependency footprint
-
-API Studio 1.0.6 reduces runtime dependencies and lazily activates optional
-infrastructure. API logging, remote log uploading, connectivity monitoring,
-and Performance monitoring remain independent, so unused features do not
-start their timers, subscriptions, or collectors.
-
-### `enableApiClient`
-
-Controls whether the built-in [`ApiStudioClient`](#-api-client) is wired up.
-Defaults to `true` for backward compatibility. Set it to `false` if you don't
-plan to use `ApiStudioClient` — API Logs and Performance keep working
-normally either way, and no client-related controller, logger or network
-service is created.
-
-### Opening individual screens (still supported)
-
-The individual screens remain available if you need a specific one instead
-of the full navigation:
-
-```dart
-ApiStudio.show(context);                     // API Inspector (Logs)
-ApiStudio.showFileExplorer(context);         // File Explorer
-ApiStudio.showPerformanceInspector(context); // Performance Inspector
-```
-
-### Migration from separate initialization calls
-
-Previously, the API Client required a second initialization call:
-
-```dart
-// Deprecated — still works, but prefer the unified call below.
-await ApiStudio.initialize(apiKey: 'YOUR_API_KEY');
-ApiStudio.initClient(baseUrl: 'https://api.example.com');
-```
-
-`ApiStudio.initClient` is now `@Deprecated` and delegates to the same
-underlying client setup. Prefer passing `baseUrl` and `enableApiClient`
-directly to `ApiStudio.initialize` instead.
+See the [CHANGELOG](CHANGELOG.md) for details.
 
 ## 📄 License
 
-MIT License
-
-<p align="center">Made with ❤️ for the Flutter community</p>
+MIT

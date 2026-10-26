@@ -1,15 +1,12 @@
-import 'package:hive_flutter/hive_flutter.dart';
-import 'connectivity_checker_native.dart'
-    if (dart.library.js_interop) 'connectivity_checker_web.dart';
-import 'connectivity_service.dart';
-import 'failed_api_count_service.dart';
+import '../api_client/client/api_studio_client.dart';
+import '../api_client/core/inspector_logger.dart';
 import '../core/constants/app_constants.dart';
-import '../core/constants/hive_constants.dart';
-import '../data/datasources/hive_datasource.dart';
+import '../core/pipeline/log_pipeline.dart';
 import '../data/datasources/file_explorer_datasource.dart'
     if (dart.library.io) '../data/datasources/file_explorer_datasource_io.dart'
     if (dart.library.js_interop) '../data/datasources/file_explorer_datasource_web.dart';
-import '../data/models/api_log_hive_model.dart';
+import '../data/datasources/hive_datasource.dart';
+import '../data/datasources/hive_storage.dart';
 import '../data/repositories/api_log_repository_impl.dart';
 import '../data/repositories/file_explorer_repository_impl.dart';
 import '../data/repositories/performance_repository_impl.dart';
@@ -22,22 +19,24 @@ import '../domain/usecases/get_logs_usecase.dart';
 import '../domain/usecases/list_directory_usecase.dart';
 import '../domain/usecases/run_request_usecase.dart';
 import '../domain/usecases/save_log_usecase.dart';
-import '../services/file_action_service.dart';
-import '../services/file_download_service.dart'
-    if (dart.library.io) '../services/file_download_service_io.dart'
-    if (dart.library.js_interop) '../services/file_download_service_web.dart';
 import '../notification/config/notification_config.dart';
 import '../notification/services/notification_service.dart';
 import '../presentation/controllers/edit_run_controller.dart';
 import '../presentation/controllers/export_controller.dart';
+import '../presentation/controllers/file_explorer_controller.dart';
 import '../presentation/controllers/inspector_detail_controller.dart';
 import '../presentation/controllers/inspector_list_controller.dart';
-import '../presentation/controllers/file_explorer_controller.dart';
 import '../presentation/controllers/performance_controller.dart';
-import 'performance_monitor.dart';
+import '../services/file_action_service.dart';
+import '../services/file_download_service.dart'
+    if (dart.library.io) '../services/file_download_service_io.dart'
+    if (dart.library.js_interop) '../services/file_download_service_web.dart';
+import 'connectivity_checker_native.dart'
+    if (dart.library.js_interop) 'connectivity_checker_web.dart';
+import 'connectivity_service.dart';
 import 'export_service.dart';
-import '../api_client/client/api_studio_client.dart';
-import '../api_client/core/inspector_logger.dart';
+import 'failed_api_count_service.dart';
+import 'performance_monitor.dart';
 
 class DiService {
   DiService._();
@@ -49,14 +48,20 @@ class DiService {
   static NotificationService? _notificationService;
   static bool _initialized = false;
   static int _maxStoredLogs = AppConstants.maxStoredLogs;
+  static Duration _logRetention = AppConstants.logRetention;
   static Duration _requestTimeout = AppConstants.requestTimeout;
 
+  /// Whether local storage and controllers have been initialized.
+  static bool get isInitialized => _initialized;
+
   static int get maxStoredLogs => _maxStoredLogs;
+  static Duration get logRetention => _logRetention;
   static Duration get requestTimeout => _requestTimeout;
   static NotificationService? get notificationService => _notificationService;
 
   static Future<void> init({
     int? maxStoredLogs,
+    Duration? logRetention,
     Duration? requestTimeout,
     bool enableConnectivityStream = false,
     bool enableFailedApiStream = false,
@@ -65,6 +70,7 @@ class DiService {
   }) async {
     if (_initialized) return;
     if (maxStoredLogs != null) _maxStoredLogs = maxStoredLogs;
+    if (logRetention != null) _logRetention = logRetention;
     if (requestTimeout != null) _requestTimeout = requestTimeout;
 
     // Initialize notification service if configured
@@ -73,12 +79,17 @@ class DiService {
       await _notificationService!.initialize();
     }
 
-    await Hive.initFlutter(HiveConstants.hiveSubDir);
-    Hive.registerAdapter(ApiLogHiveModelAdapter());
+    ApiStudioHive.registerAdapters();
     final box = await HiveApiLogDataSource.openBox();
-    final dataSource =
-        HiveApiLogDataSource(box, maxStoredLogs: _maxStoredLogs);
+    final dataSource = HiveApiLogDataSource(
+      box,
+      maxStoredLogs: _maxStoredLogs,
+      retention: _logRetention,
+    );
+    await dataSource.prune();
     _repository = ApiLogRepositoryImpl(dataSource);
+    LogPipeline.repository = _repository;
+    LogPipeline.notificationService = _notificationService;
     _fileExplorerRepository =
         FileExplorerRepositoryImpl(FileExplorerDataSource());
     _fileActionService =

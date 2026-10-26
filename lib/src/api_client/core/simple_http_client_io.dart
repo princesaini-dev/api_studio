@@ -30,8 +30,12 @@ class SimpleHttpClient {
     Duration? timeout,
   }) async {
     final completer = Completer<SimpleHttpResponse>();
+    Null fail(Object e, StackTrace st) {
+      if (!completer.isCompleted) completer.completeError(e, st);
+      return null;
+    }
 
-    _client.postUrl(url).then((ioRequest) {
+    unawaited(_client.postUrl(url).then((ioRequest) {
       for (final e in headers.entries) {
         ioRequest.headers.set(e.key, e.value);
       }
@@ -41,23 +45,19 @@ class SimpleHttpClient {
       ioRequest.close().then((ioResponse) {
         final sb = StringBuffer();
         ioResponse.transform(utf8.decoder).listen(
-          (chunk) => sb.write(chunk),
+          sb.write,
           onDone: () {
             completer.complete(SimpleHttpResponse(
               statusCode: ioResponse.statusCode,
               body: sb.toString(),
             ));
           },
-          onError: (e) {
-            completer.completeError(e);
+          onError: (Object e, StackTrace st) {
+            completer.completeError(e, st);
           },
         );
-      }).catchError((e) {
-        completer.completeError(e);
-      });
-    }).catchError((e) {
-      completer.completeError(e);
-    });
+      }).catchError(fail);
+    }).catchError(fail));
 
     try {
       if (timeout != null) {

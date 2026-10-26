@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+
 import '../../core/constants/app_strings.dart';
 import '../../core/extensions/datetime_extensions.dart';
 import '../../domain/entities/api_log_entity.dart';
 import '../../theme/api_inspector_theme.dart';
+import '../../theme/api_inspector_theme_data.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/dimensions.dart';
@@ -164,7 +166,7 @@ class LogCard extends StatelessWidget {
 
 class _UrlDisplay extends StatelessWidget {
   final String url;
-  final dynamic theme;
+  final ApiInspectorThemeData theme;
   const _UrlDisplay({required this.url, required this.theme});
 
   @override
@@ -213,7 +215,7 @@ class _UrlDisplay extends StatelessWidget {
 class _MetaChip extends StatelessWidget {
   final IconData icon;
   final String label;
-  final dynamic theme;
+  final ApiInspectorThemeData theme;
   const _MetaChip(
       {required this.icon, required this.label, required this.theme});
 
@@ -235,7 +237,7 @@ class _MetaChip extends StatelessWidget {
 class _DurationChip extends StatelessWidget {
   final int ms;
   final Color color;
-  final dynamic theme;
+  final ApiInspectorThemeData theme;
   const _DurationChip(
       {required this.ms, required this.color, required this.theme});
 

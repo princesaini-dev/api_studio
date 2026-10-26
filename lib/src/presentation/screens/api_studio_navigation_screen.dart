@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/constants/app_strings.dart';
+import '../../core/runtime/api_studio_runtime.dart';
+import '../../services/di_service.dart';
 import '../../theme/api_inspector_theme.dart';
 import '../../theme/api_inspector_theme_data.dart';
 import '../../theme/app_text_styles.dart';
@@ -71,6 +73,11 @@ class _ApiStudioNavigationScreenState extends State<ApiStudioNavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!ApiStudioRuntime.enabled || !DiService.isInitialized) {
+      return const Scaffold(
+        body: Center(child: Text(AppStrings.apiStudioDisabled)),
+      );
+    }
     final theme = ApiInspectorTheme.of(context);
 
     return Scaffold(

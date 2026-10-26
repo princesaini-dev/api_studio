@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+
 import '../../domain/repositories/api_log_repository.dart';
 import '../../theme/api_inspector_theme.dart';
+import '../../theme/api_inspector_theme_data.dart';
 import '../../theme/app_text_styles.dart';
 
 class FilterChipBar extends StatelessWidget {
@@ -71,7 +73,7 @@ class FilterChipBar extends StatelessWidget {
 
   Widget _buildDropdown<T>(
     BuildContext context,
-    dynamic theme, {
+    ApiInspectorThemeData theme, {
     required String label,
     required T value,
     required List<T> items,

@@ -44,8 +44,8 @@ void main() {
 
         expect(ApiStudio.isApiClientEnabled, isTrue);
         expect(() => ApiStudioClient.instance, returnsNormally);
-        expect(ApiStudioClient.instance.config.baseUrl,
-            'https://api.example.com');
+        expect(
+            ApiStudioClient.instance.config.baseUrl, 'https://api.example.com');
       },
     );
   });

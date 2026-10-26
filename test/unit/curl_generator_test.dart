@@ -31,9 +31,43 @@ void main() {
     });
 
     test('includes headers', () {
-      final log = makeLog(headers: {'Authorization': 'Bearer token123'});
+      final log = makeLog(headers: {'Accept': 'application/json'});
       final curl = CurlGenerator.generate(log);
-      expect(curl, contains("-H 'Authorization: Bearer token123'"));
+      expect(curl, contains("-H 'Accept: application/json'"));
+    });
+
+    test('redacts sensitive headers, query params and body keys', () {
+      final log = makeLog(
+        url: 'https://api.example.com/users?token=abc&page=1',
+        method: HttpMethod.post,
+        headers: {'Authorization': 'Bearer token123', 'Cookie': 'sid=1'},
+        queryParams: {'api_key': 'k'},
+        body: '{"user":"u","password":"p"}',
+      );
+      final curl = CurlGenerator.generate(log);
+      expect(
+          curl, contains("-H 'Authorization: ${RedactionConfig.placeholder}'"));
+      expect(curl, contains("-H 'Cookie: ${RedactionConfig.placeholder}'"));
+      expect(curl, isNot(contains('token123')));
+      expect(curl, isNot(contains('token=abc')));
+      expect(curl, isNot(contains('api_key=k')));
+      expect(curl, contains('page=1'));
+      expect(curl, contains('"user":"u"'));
+      expect(curl, isNot(contains('"password":"p"')));
+    });
+
+    test('preserves repeated query keys', () {
+      final log = makeLog(url: 'https://api.example.com/items?id=1&id=2');
+      final curl = CurlGenerator.generate(log);
+      expect(curl, contains('id=1&id=2'));
+    });
+
+    test('flattens multi-value headers captured from Dio', () {
+      final log = makeLog(headers: {
+        'Accept': ['application/json', 'text/plain'],
+      });
+      final curl = CurlGenerator.generate(log);
+      expect(curl, contains("-H 'Accept: application/json, text/plain'"));
     });
 
     test('appends query params to URL', () {

@@ -1,14 +1,19 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+
 import '../../core/constants/app_strings.dart';
+import '../../core/runtime/api_studio_runtime.dart';
 import '../../services/di_service.dart';
 import '../../theme/api_inspector_theme.dart';
+import '../../theme/api_inspector_theme_data.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/dimensions.dart';
-import '../states/export_state.dart';
-import '../states/inspector_list_state.dart';
 import '../controllers/export_controller.dart';
 import '../controllers/inspector_list_controller.dart';
+import '../states/export_state.dart';
+import '../states/inspector_list_state.dart';
 import '../widgets/filter_chip_bar.dart';
 import '../widgets/log_card.dart';
 import '../widgets/search_bar_widget.dart';
@@ -31,30 +36,34 @@ class InspectorListScreen extends StatefulWidget {
 }
 
 class _InspectorListScreenState extends State<InspectorListScreen> {
-  late final InspectorListController _listController;
-  late final ExportController _exportController;
+  InspectorListController? _listController;
+  ExportController? _exportController;
 
   @override
   void initState() {
     super.initState();
-    _listController = DiService.createListController();
+    if (!ApiStudioRuntime.enabled || !DiService.isInitialized) return;
+    _listController = DiService.createListController()..loadLogs();
     _exportController = DiService.createExportController();
-    _listController.loadLogs();
   }
 
   @override
   void dispose() {
-    _listController.dispose();
-    _exportController.dispose();
+    _listController?.dispose();
+    _exportController?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return _InspectorListView(
-      listController: _listController,
-      exportController: _exportController,
-    );
+    final list = _listController;
+    final export = _exportController;
+    if (list == null || export == null) {
+      return const Scaffold(
+        body: Center(child: Text(AppStrings.apiStudioDisabled)),
+      );
+    }
+    return _InspectorListView(listController: list, exportController: export);
   }
 }
 
@@ -126,7 +135,7 @@ class _InspectorListViewState extends State<_InspectorListView> {
     );
   }
 
-  AppBar _buildAppBar(BuildContext context, dynamic theme) {
+  AppBar _buildAppBar(BuildContext context, ApiInspectorThemeData theme) {
     return AppBar(
       backgroundColor: theme.surfaceColor,
       elevation: 0,
@@ -178,6 +187,8 @@ class _InspectorListViewState extends State<_InspectorListView> {
           onSelected: (v) {
             if (v == 'json') widget.exportController.exportAsJson();
             if (v == 'txt') widget.exportController.exportAsTxt();
+            if (v == 'har') widget.exportController.exportAsHar();
+            if (v == 'postman') widget.exportController.exportAsPostman();
           },
           itemBuilder: (_) => [
             PopupMenuItem(
@@ -204,6 +215,21 @@ class _InspectorListViewState extends State<_InspectorListView> {
                             .copyWith(color: theme.textPrimaryColor)),
                   ],
                 )),
+            for (final (value, icon, label) in [
+              ('har', Icons.archive_outlined, AppStrings.exportAsHar),
+              ('postman', Icons.send_outlined, AppStrings.exportAsPostman),
+            ])
+              PopupMenuItem(
+                  value: value,
+                  child: Row(
+                    children: [
+                      Icon(icon, size: 16, color: theme.textSecondaryColor),
+                      const SizedBox(width: Dimensions.sm),
+                      Text(label,
+                          style: AppTextStyles.bodyMedium
+                              .copyWith(color: theme.textPrimaryColor)),
+                    ],
+                  )),
           ],
         ),
         const SizedBox(width: Dimensions.xs),
@@ -211,7 +237,7 @@ class _InspectorListViewState extends State<_InspectorListView> {
     );
   }
 
-  void _confirmClear(BuildContext context, dynamic theme) {
+  void _confirmClear(BuildContext context, ApiInspectorThemeData theme) {
     showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
@@ -246,7 +272,7 @@ class _InspectorListViewState extends State<_InspectorListView> {
 }
 
 class _SearchAndFilterSection extends StatelessWidget {
-  final dynamic theme;
+  final ApiInspectorThemeData theme;
   final InspectorListController controller;
   const _SearchAndFilterSection(
       {required this.theme, required this.controller});
@@ -259,7 +285,7 @@ class _SearchAndFilterSection extends StatelessWidget {
       child: Column(
         children: [
           SearchBarWidget(
-            onChanged: (q) => controller.searchLogs(q),
+            onChanged: controller.searchLogs,
           ),
           const SizedBox(height: 10),
           AnimatedBuilder(
@@ -270,9 +296,9 @@ class _SearchAndFilterSection extends StatelessWidget {
                 selectedMethod: state.methodFilter,
                 selectedStatus: state.statusFilter,
                 selectedSort: state.sortOrder,
-                onMethodChanged: (f) => controller.filterMethod(f),
-                onStatusChanged: (f) => controller.filterStatus(f),
-                onSortChanged: (s) => controller.sortLogs(s),
+                onMethodChanged: controller.filterMethod,
+                onStatusChanged: controller.filterStatus,
+                onSortChanged: controller.sortLogs,
               );
             },
           ),
@@ -388,7 +414,7 @@ class _LogListSectionState extends State<_LogListSection> {
                   ),
                 );
                 if (confirmed == true && context.mounted) {
-                  widget.controller.deleteLog(log.id);
+                  unawaited(widget.controller.deleteLog(log.id));
                 }
               },
             );
@@ -400,7 +426,7 @@ class _LogListSectionState extends State<_LogListSection> {
 }
 
 class _EmptyState extends StatelessWidget {
-  final dynamic theme;
+  final ApiInspectorThemeData theme;
   const _EmptyState({required this.theme});
 
   @override

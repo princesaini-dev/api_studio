@@ -1,9 +1,9 @@
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:hive_ce/hive.dart';
 import '../../core/constants/app_constants.dart';
-import '../../core/constants/hive_constants.dart';
 import '../../core/errors/exceptions.dart';
 import '../../domain/repositories/api_log_repository.dart';
 import '../models/api_log_hive_model.dart';
+import 'hive_storage.dart';
 
 abstract class ApiLogLocalDataSource {
   Future<List<ApiLogHiveModel>> getLogs(GetLogsParams params);
@@ -14,16 +14,76 @@ abstract class ApiLogLocalDataSource {
   Future<void> clearAllLogs();
   Future<int> getTotalCount();
   Stream<BoxEvent> watchBox();
+
+  /// Applies the retention policy. Returns the number of logs removed.
+  Future<int> prune();
 }
 
 class HiveApiLogDataSource implements ApiLogLocalDataSource {
   final Box<ApiLogHiveModel> _box;
+
+  /// Maximum number of logs kept. Oldest logs are removed first.
   final int maxStoredLogs;
 
-  HiveApiLogDataSource(this._box, {this.maxStoredLogs = AppConstants.maxStoredLogs});
+  /// Logs older than this are removed. [Duration.zero] disables age-based
+  /// pruning.
+  final Duration retention;
 
-  static Future<Box<ApiLogHiveModel>> openBox() async {
-    return Hive.openBox<ApiLogHiveModel>(HiveConstants.apiLogBoxName);
+  /// Upper bound on the combined (approximate) size of stored bodies.
+  final int maxStorageBytes;
+
+  final DateTime Function() _clock;
+
+  int _approxBytes = 0;
+  DateTime? _lastPrune;
+
+  static const Duration _agePruneInterval = Duration(minutes: 1);
+
+  HiveApiLogDataSource(
+    this._box, {
+    this.maxStoredLogs = AppConstants.maxStoredLogs,
+    this.retention = AppConstants.logRetention,
+    this.maxStorageBytes = AppConstants.maxStorageBytes,
+    DateTime Function()? clock,
+  }) : _clock = clock ?? DateTime.now {
+    _approxBytes = _box.values.fold(0, (s, m) => s + m.approximateSizeBytes);
+  }
+
+  /// Opens (and migrates, if needed) the log box.
+  static Future<Box<ApiLogHiveModel>> openBox() =>
+      LogStorageMigrator.openLogsBox();
+
+  @override
+  Future<int> prune() async {
+    _lastPrune = _clock();
+    final models = _box.values.toList()
+      ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+    var remaining = models.length;
+    var bytes = models.fold<int>(0, (s, m) => s + m.approximateSizeBytes);
+    final now = _clock();
+    final keys = <dynamic>[];
+    for (final m in models) {
+      final expired =
+          retention > Duration.zero && now.difference(m.timestamp) > retention;
+      if (!expired && remaining <= maxStoredLogs && bytes <= maxStorageBytes) {
+        break;
+      }
+      keys.add(m.key);
+      remaining--;
+      bytes -= m.approximateSizeBytes;
+    }
+    if (keys.isNotEmpty) await _box.deleteAll(keys);
+    _approxBytes = bytes;
+    return keys.length;
+  }
+
+  bool get _needsPrune {
+    if (_box.length > maxStoredLogs || _approxBytes > maxStorageBytes) {
+      return true;
+    }
+    final last = _lastPrune;
+    return retention > Duration.zero &&
+        (last == null || _clock().difference(last) > _agePruneInterval);
   }
 
   @override
@@ -94,13 +154,9 @@ class HiveApiLogDataSource implements ApiLogLocalDataSource {
   @override
   Future<void> saveLog(ApiLogHiveModel model) async {
     try {
-      if (_box.length >= maxStoredLogs) {
-        final evictCount = (_box.length - maxStoredLogs) + 1;
-        for (var i = 0; i < evictCount && _box.isNotEmpty; i++) {
-          await _box.deleteAt(0);
-        }
-      }
       await _box.put(model.id, model);
+      _approxBytes += model.approximateSizeBytes;
+      if (_needsPrune) await prune();
     } catch (e) {
       throw StorageException('Failed to save log: $e');
     }
@@ -128,6 +184,7 @@ class HiveApiLogDataSource implements ApiLogLocalDataSource {
   Future<void> clearAllLogs() async {
     try {
       await _box.clear();
+      _approxBytes = 0;
     } catch (e) {
       throw StorageException('Failed to clear logs: $e');
     }

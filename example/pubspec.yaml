@@ -1,15 +1,26 @@
 name: api_studio_example
 description: Example app for api_studio package.
 publish_to: 'none'
-version: 1.0.7
+version: 1.1.0
 
 environment:
-  sdk: ">=3.3.0 <4.0.0"
-  flutter: ">=3.19.0"
+  sdk: ">=3.6.0 <4.0.0"
+  flutter: ">=3.27.0"
 
 dependencies:
   flutter:
     sdk: flutter
+  api_studio:
+    path: ../
+  # Recommended integrations (companion packages, optional for your app).
+  api_studio_dio:
+    path: ../packages/api_studio_dio
+  api_studio_http:
+    path: ../packages/api_studio_http
+  dio: ^5.4.0
+  http: ^1.5.0
+
+dependency_overrides:
   api_studio:
     path: ../
 

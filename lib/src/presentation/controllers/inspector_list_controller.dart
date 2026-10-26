@@ -3,11 +3,11 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../core/constants/app_constants.dart';
-import '../../domain/repositories/api_log_repository.dart';
-import '../../domain/usecases/get_logs_usecase.dart';
-import '../../domain/usecases/delete_log_usecase.dart';
-import '../../domain/usecases/clear_logs_usecase.dart';
 import '../../core/usecases/usecase.dart';
+import '../../domain/repositories/api_log_repository.dart';
+import '../../domain/usecases/clear_logs_usecase.dart';
+import '../../domain/usecases/delete_log_usecase.dart';
+import '../../domain/usecases/get_logs_usecase.dart';
 import '../states/inspector_list_state.dart';
 
 class InspectorListController extends ChangeNotifier {

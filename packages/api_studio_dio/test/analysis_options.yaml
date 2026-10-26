@@ -1,0 +1,6 @@
+include: ../analysis_options.yaml
+
+linter:
+  rules:
+    # Tests inspect decoded JSON exports/payloads dynamically.
+    avoid_dynamic_calls: false

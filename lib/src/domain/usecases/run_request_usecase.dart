@@ -1,8 +1,5 @@
 import 'dart:convert';
-import '../entities/api_log_entity.dart';
-import '../repositories/api_log_repository.dart';
-import '../../core/usecases/usecase.dart';
-import '../../core/constants/app_constants.dart';
+
 import '../../api_client/adapters/http_adapter.dart';
 import '../../api_client/cache/cache_store.dart';
 import '../../api_client/cookie/cookie_jar.dart';
@@ -10,6 +7,12 @@ import '../../api_client/core/client_config.dart';
 import '../../api_client/enums/http_method_enum.dart';
 import '../../api_client/exceptions/api_exceptions.dart';
 import '../../api_client/request/api_request_options.dart';
+import '../../core/constants/app_constants.dart';
+import '../../core/pipeline/log_pipeline.dart';
+import '../../core/usecases/usecase.dart';
+import '../../core/utils/url_utils.dart';
+import '../entities/api_log_entity.dart';
+import '../repositories/api_log_repository.dart';
 
 class RunRequestParams {
   final ApiLogEntity originalLog;
@@ -35,6 +38,23 @@ class RunRequestUseCase implements UseCase<ApiLogEntity, RunRequestParams> {
   final ApiLogRepository repository;
 
   const RunRequestUseCase(this.repository);
+
+  /// Transport-level headers that must not be replayed verbatim: they are
+  /// recomputed by the HTTP stack and become wrong once the body is edited.
+  static const Set<String> _hopByHopHeaders = {
+    'content-length',
+    'host',
+    'transfer-encoding',
+    'connection',
+  };
+
+  /// Headers to send when replaying a captured request: drops transport
+  /// headers and flattens multi-value headers (e.g. captured from Dio).
+  static Map<String, dynamic> replayHeaders(Map<String, dynamic> headers) => {
+        for (final e in headers.entries)
+          if (!_hopByHopHeaders.contains(e.key.toLowerCase()))
+            e.key: UrlUtils.headerValue(e.value),
+      };
 
   static ApiHttpMethod _toApiHttpMethod(HttpMethod method) {
     switch (method) {
@@ -65,13 +85,10 @@ class RunRequestUseCase implements UseCase<ApiLogEntity, RunRequestParams> {
     LogStatus status = LogStatus.loading;
 
     try {
-      // Build URI with query parameters
-      var uri = Uri.parse(params.url);
-      if (params.queryParams.isNotEmpty) {
-        final merged = Map<String, String>.from(uri.queryParameters)
-          ..addAll(params.queryParams.map((k, v) => MapEntry(k, v.toString())));
-        uri = uri.replace(queryParameters: merged);
-      }
+      // Build the final URI (repeated query keys preserved) and send it as
+      // an absolute path so the adapter does not re-encode the query.
+      final uri = UrlUtils.mergeQuery(params.url, params.queryParams) ??
+          (throw FormatException('Invalid URL: ${params.url}'));
 
       final schemeAndHost = uri.hasScheme && uri.host.isNotEmpty
           ? '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}'
@@ -91,9 +108,8 @@ class RunRequestUseCase implements UseCase<ApiLogEntity, RunRequestParams> {
       final options = ApiRequestOptions(
         method: _toApiHttpMethod(params.method),
         baseUrl: schemeAndHost,
-        path: uri.path.isNotEmpty ? uri.path : '/',
-        queryParameters: uri.queryParameters,
-        headers: params.headers,
+        path: uri.toString(),
+        headers: replayHeaders(params.headers),
         data: params.body,
         connectTimeout: AppConstants.requestTimeout,
         receiveTimeout: AppConstants.requestTimeout,
@@ -161,7 +177,13 @@ class RunRequestUseCase implements UseCase<ApiLogEntity, RunRequestParams> {
       parentId: params.originalLog.id,
     );
 
-    await repository.saveLog(newLog);
-    return newLog;
+    // Replays go through the same redaction/truncation pipeline before
+    // being stored; they are not uploaded to the cloud.
+    final stored = await LogPipeline.record(
+      newLog,
+      upload: false,
+      repository: repository,
+    );
+    return stored ?? newLog;
   }
 }

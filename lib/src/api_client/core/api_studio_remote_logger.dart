@@ -3,15 +3,15 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
-import 'simple_http_client.dart';
-
 import '../../core/constants/app_constants.dart';
-import '../exceptions/api_exceptions.dart';
-import '../models/api_response.dart';
-import '../request/api_request_options.dart';
+import '../../domain/entities/api_log_entity.dart';
+import 'simple_http_client.dart';
 
 /// Sends fire-and-forget API execution logs to the dedicated API Studio
 /// backend.
+///
+/// Payloads are only ever created from logs that already went through the
+/// redaction pipeline (`LogPipeline`), so unredacted data is never queued.
 ///
 /// This is completely isolated from [ApiStudioClient]'s own configuration:
 /// it never reuses the user's base URL, headers, authentication, cookies,
@@ -35,14 +35,6 @@ class ApiStudioRemoteLogger {
   static const Duration _debounceInterval = Duration(milliseconds: 1500);
   static const int _maxPendingPayloads = 100;
   static const int _maxBodyCharacters = 64 * 1024;
-
-  static const List<String> _sensitiveHeaders = [
-    'authorization',
-    'cookie',
-    'set-cookie',
-    'x-api-key',
-    'proxy-authorization',
-  ];
 
   /// Configures (or disables) automatic remote logging.
   ///
@@ -74,106 +66,42 @@ class ApiStudioRemoteLogger {
     await _uploadPending();
   }
 
-  /// Fire-and-forget logging of a completed (successful or HTTP-error)
-  /// response.
-  static void logSuccess({
-    required ApiRequestOptions options,
-    required ApiResponse<dynamic> response,
-    required DateTime startTime,
-  }) {
-    _dispatch(
-      options: options,
-      startTime: startTime,
-      statusCode: response.statusCode,
-      responseHeaders: response.headers,
-      responseBody: response.data,
-      error: null,
-    );
-  }
-
-  /// Fire-and-forget logging of a failed request (exception / network error).
-  static void logError({
-    required ApiRequestOptions options,
-    required ApiStudioException error,
-    required DateTime startTime,
-  }) {
-    _dispatch(
-      options: options,
-      startTime: startTime,
-      statusCode: error.statusCode,
-      responseHeaders: error.responseHeaders,
-      responseBody: error.response,
-      error: error.message,
-    );
-  }
-
-  /// Universal logging entry point for external HTTP clients (Dio, http,
-  /// GraphQL, etc.).
-  static void logCustom({
-    required String url,
-    required String method,
-    int? statusCode,
-    Map<String, dynamic> requestHeaders = const {},
-    dynamic requestBody,
-    Map<String, dynamic>? responseHeaders,
-    dynamic responseBody,
-    String? error,
-    required DateTime startTime,
-    int? durationMs,
-  }) {
+  /// Queues an already-prepared (redacted + truncated) [log] for upload.
+  ///
+  /// Only [LogPipeline] calls this, which guarantees redaction has run.
+  /// Fire-and-forget: never awaits the network and never throws.
+  static void enqueue(ApiLogEntity log) {
     if (!isEnabled) return;
-    if (_isApiStudioRequest(url)) return;
-
-    unawaited(
-      _send(
-        url: url,
-        method: method,
-        requestHeaders: requestHeaders,
-        requestBody: requestBody,
-        statusCode: statusCode,
-        responseHeaders: responseHeaders,
-        responseBody: responseBody,
-        error: error,
-        startTime: startTime,
-        explicitDurationMs: durationMs,
-      ).catchError((_) {}),
-    );
-  }
-
-  static void _dispatch({
-    required ApiRequestOptions options,
-    required DateTime startTime,
-    int? statusCode,
-    Map<String, dynamic>? responseHeaders,
-    dynamic responseBody,
-    String? error,
-  }) {
-    if (!isEnabled) return;
-
-    final String url;
+    if (_isApiStudioRequest(log.url)) return;
     try {
-      url = options.uri.toString();
-    } catch (_) {
-      return;
-    }
+      final payload = jsonEncode({
+        'method': log.methodLabel,
+        'url': log.url,
+        'status_code': log.statusCode,
+        'duration_ms': log.durationMs,
+        'request': {
+          'headers': log.requestHeaders,
+          'body': _safeBody(log.requestBody ??
+              (log.formData == null ? null : jsonEncode(log.formData))),
+        },
+        'response': {
+          'headers': log.responseHeaders,
+          'body': _safeBody(log.responseBody),
+        },
+        'error': log.errorMessage,
+        'timestamp': DateTime.now().toUtc().toIso8601String(),
+      });
 
-    // Prevent infinite loop: never log requests made to the logging backend.
-    if (_isApiStudioRequest(url)) return;
+      _pendingPayloads.add(payload);
+      if (_pendingPayloads.length > _maxPendingPayloads) {
+        _pendingPayloads.removeAt(0);
+      }
 
-    // True fire-and-forget: never awaited, never throws.
-    unawaited(
-      _send(
-        url: url,
-        method: options.method.value,
-        requestHeaders: options.headers,
-        requestBody: options.data,
-        statusCode: statusCode,
-        responseHeaders: responseHeaders,
-        responseBody: responseBody,
-        error: error,
-        startTime: startTime,
-      ).catchError((_) {}),
-    );
+      final statusCode = log.statusCode;
+      final isError = log.errorMessage != null ||
+          (statusCode != null && (statusCode < 200 || statusCode >= 400));
+      _scheduleDebounce(immediate: isError);
+    } catch (_) {}
   }
 
   static bool _isApiStudioRequest(String url) {
@@ -194,53 +122,6 @@ class ApiStudioRemoteLogger {
       _debounceTimer = null;
       unawaited(_uploadPending());
     });
-  }
-
-  static Future<void> _send({
-    required String url,
-    required String method,
-    required Map<String, dynamic> requestHeaders,
-    dynamic requestBody,
-    int? statusCode,
-    Map<String, dynamic>? responseHeaders,
-    dynamic responseBody,
-    String? error,
-    required DateTime startTime,
-    int? explicitDurationMs,
-  }) async {
-    final apiKey = _apiKey;
-    if (apiKey == null) return;
-
-    try {
-      final durationMs = explicitDurationMs ??
-          DateTime.now().difference(startTime).inMilliseconds;
-
-      final payload = jsonEncode({
-        'method': method.toUpperCase(),
-        'url': url,
-        'status_code': statusCode,
-        'duration_ms': durationMs,
-        'request': {
-          'headers': _sanitizeHeaders(requestHeaders),
-          'body': _safeBody(requestBody),
-        },
-        'response': {
-          'headers': _sanitizeHeaders(responseHeaders ?? const {}),
-          'body': _safeBody(responseBody),
-        },
-        'error': error,
-        'timestamp': DateTime.now().toUtc().toIso8601String(),
-      });
-
-      _pendingPayloads.add(payload);
-      if (_pendingPayloads.length > _maxPendingPayloads) {
-        _pendingPayloads.removeAt(0);
-      }
-
-      final isError = error != null ||
-          (statusCode != null && (statusCode < 200 || statusCode >= 400));
-      _scheduleDebounce(immediate: isError);
-    } catch (_) {}
   }
 
   static Future<void> _uploadPending() async {
@@ -286,32 +167,29 @@ class ApiStudioRemoteLogger {
     }
   }
 
-  static Map<String, dynamic> _sanitizeHeaders(Map<String, dynamic> headers) {
-    final sanitized = <String, dynamic>{};
-    headers.forEach((key, value) {
-      if (_sensitiveHeaders.contains(key.toLowerCase())) return;
-      sanitized[key] = value;
-    });
-    return sanitized;
-  }
-
-  static dynamic _safeBody(dynamic body) {
+  static dynamic _safeBody(String? body) {
     if (body == null) return null;
-    if (body is List<int>) return '[bytes: ${body.length}]';
-
-    final String encoded;
-    try {
-      encoded = body is String ? body : jsonEncode(body);
-    } catch (_) {
-      return _truncate(body.toString());
-    }
-    if (encoded.length > _maxBodyCharacters) return _truncate(encoded);
-    if (body is! String) return body;
+    if (body.length > _maxBodyCharacters) return _truncate(body);
     try {
       return jsonDecode(body);
     } catch (_) {
       return body;
     }
+  }
+
+  /// Test-only hook to inject a fake [SimpleHttpClient].
+  @visibleForTesting
+  static void debugOverride({SimpleHttpClient? client}) {
+    if (client != null) _client = client;
+  }
+
+  /// Test-only hook to reset all static state.
+  @visibleForTesting
+  static void debugReset() {
+    configure(null);
+    _pendingPayloads.clear();
+    _client = null;
+    _isUploading = false;
   }
 
   static String _truncate(String value) {

@@ -6,6 +6,7 @@ import 'package:api_studio/src/services/di_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../test_helpers/fake_path_provider.dart';
+import '../test_helpers/fake_simple_http_client.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -14,6 +15,8 @@ void main() {
 
   setUpAll(() {
     tempDir = installFakePathProvider();
+    // Never hit the real API Studio backend from tests.
+    ApiStudioRemoteLogger.debugOverride(client: RecordingSimpleHttpClient());
   });
 
   tearDownAll(() {

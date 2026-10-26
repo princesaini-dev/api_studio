@@ -1,6 +1,6 @@
+import '../exceptions/api_exceptions.dart';
 import '../models/api_response.dart';
 import '../request/api_request_options.dart';
-import '../exceptions/api_exceptions.dart';
 
 /// Handler forwarded to request interceptors.
 class RequestInterceptorHandler {

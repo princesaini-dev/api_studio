@@ -3,8 +3,8 @@ import 'package:api_studio/src/domain/repositories/api_log_repository.dart';
 import 'package:api_studio/src/domain/usecases/clear_logs_usecase.dart';
 import 'package:api_studio/src/domain/usecases/delete_log_usecase.dart';
 import 'package:api_studio/src/domain/usecases/get_logs_usecase.dart';
-import 'package:api_studio/src/presentation/states/inspector_list_state.dart';
 import 'package:api_studio/src/presentation/controllers/inspector_list_controller.dart';
+import 'package:api_studio/src/presentation/states/inspector_list_state.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 

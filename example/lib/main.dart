@@ -27,19 +27,22 @@ import 'screens/sequential_screen.dart';
 import 'screens/batch_screen.dart';
 import 'screens/duplicate_screen.dart';
 import 'screens/interceptor_screen.dart';
+import 'screens/dio_screen.dart';
+import 'screens/http_screen.dart';
 import 'widgets/failed_api_badge.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Single, unified initialization: API key, backend base URL and the
-  // built-in API Client are all configured through one call.
+  // One call configures everything. `enabled` defaults to kDebugMode, so
+  // API Studio is a no-op in release builds unless you opt in.
   await ApiStudio.initialize(
-    apiKey: null,
+    apiKey: null, // add your apistudio.cloud key to enable cloud logging
+    // Optional built-in client used by the "Built-in client" demos below.
     baseUrl: 'https://jsonplaceholder.typicode.com',
-    enableApiClient: true,
     enableConnectivityStream: true,
     enableFailedApiStream: true,
     enablePerformanceMonitoring: true,
+    redaction: const RedactionConfig(redactBodyKeys: ['ssn']),
   );
   runApp(const ExampleApp());
 }
@@ -52,6 +55,8 @@ class ExampleApp extends StatelessWidget {
     return MaterialApp(
       title: 'API Studio Demo',
       debugShowCheckedModeBanner: false,
+      // Lets ApiStudio.open() / the floating button work without a context.
+      navigatorKey: ApiStudio.navigatorKey,
       theme: ThemeData(colorSchemeSeed: Colors.indigo, useMaterial3: true),
       home: const HomeScreen(),
     );
@@ -69,6 +74,16 @@ class _HomeScreenState extends State<HomeScreen> {
   late final StreamSubscription<bool> _connectivitySub;
   late final StreamSubscription<int> _failedCountSub;
   int _failedApiCount = ApiStudio.failedApiCount;
+
+  static const _integrationDemos = <_DemoItem>[
+    _DemoItem('Dio interceptor', Icons.bolt_rounded, Colors.deepPurple),
+    _DemoItem('package:http client', Icons.http_rounded, Colors.teal),
+  ];
+
+  static final _integrationScreens = <Widget>[
+    const DioScreen(),
+    const HttpScreen(),
+  ];
 
   static const _demos = <_DemoItem>[
     _DemoItem('1. Basic GET', Icons.download_rounded, Colors.blue),
@@ -141,6 +156,10 @@ class _HomeScreenState extends State<HomeScreen> {
     _failedCountSub = ApiStudio.failedApiCountStream.listen(
       (c) => setState(() => _failedApiCount = c),
     );
+    // Optional draggable debug button that opens API Studio.
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => ApiStudio.showFloatingButton(context),
+    );
   }
 
   @override
@@ -179,39 +198,63 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: ListView.separated(
+      body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-        itemCount: _demos.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 4),
-        itemBuilder: (context, i) {
-          final item = _demos[i];
-          return Card(
-            elevation: 1,
-            color: Colors.white,
-            margin: const EdgeInsets.symmetric(vertical: 4),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundColor: item.color.withValues(alpha: 0.15),
-                child: Icon(item.icon, color: item.color, size: 16),
-              ),
-              title: Text(
-                item.title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w500,
-                  fontSize: 14,
-                ),
-              ),
-              trailing: const Icon(Icons.chevron_right_rounded),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute<void>(builder: (_) => _screens[i]),
-              ),
-            ),
-          );
-        },
+        children: [
+          const _SectionHeader('Integrations (recommended)'),
+          for (var i = 0; i < _integrationDemos.length; i++)
+            _DemoTile(
+                item: _integrationDemos[i], screen: _integrationScreens[i]),
+          const _SectionHeader(
+            'Built-in ApiStudioClient (optional, for manual testing)',
+          ),
+          for (var i = 0; i < _demos.length; i++)
+            _DemoTile(item: _demos[i], screen: _screens[i]),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final String text;
+  const _SectionHeader(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 16, 4, 8),
+      child: Text(text, style: Theme.of(context).textTheme.titleSmall),
+    );
+  }
+}
+
+class _DemoTile extends StatelessWidget {
+  final _DemoItem item;
+  final Widget screen;
+  const _DemoTile({required this.item, required this.screen});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 1,
+      color: Colors.white,
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: item.color.withValues(alpha: 0.15),
+          child: Icon(item.icon, color: item.color, size: 16),
+        ),
+        title: Text(
+          item.title,
+          style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+        ),
+        trailing: const Icon(Icons.chevron_right_rounded),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute<void>(builder: (_) => screen),
+        ),
       ),
     );
   }

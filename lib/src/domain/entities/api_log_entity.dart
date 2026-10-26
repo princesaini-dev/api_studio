@@ -26,6 +26,10 @@ class ApiLogEntity extends Equatable {
   final bool isEdited;
   final String? parentId;
 
+  /// Whether the request and/or response body was truncated because it
+  /// exceeded the configured `maxBodyBytes` limit.
+  final bool isTruncated;
+
   const ApiLogEntity({
     required this.id,
     required this.url,
@@ -47,6 +51,7 @@ class ApiLogEntity extends Equatable {
     required this.status,
     this.isEdited = false,
     this.parentId,
+    this.isTruncated = false,
   });
 
   bool get isSuccess => status == LogStatus.success;
@@ -81,6 +86,7 @@ class ApiLogEntity extends Equatable {
     LogStatus? status,
     bool? isEdited,
     String? parentId,
+    bool? isTruncated,
   }) {
     return ApiLogEntity(
       id: id ?? this.id,
@@ -103,6 +109,7 @@ class ApiLogEntity extends Equatable {
       status: status ?? this.status,
       isEdited: isEdited ?? this.isEdited,
       parentId: parentId ?? this.parentId,
+      isTruncated: isTruncated ?? this.isTruncated,
     );
   }
 
@@ -128,5 +135,6 @@ class ApiLogEntity extends Equatable {
         status,
         isEdited,
         parentId,
+        isTruncated,
       ];
 }

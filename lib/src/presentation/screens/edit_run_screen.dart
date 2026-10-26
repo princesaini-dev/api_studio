@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+
+import '../../core/constants/app_strings.dart';
+import '../../core/redaction/redaction_config.dart';
 import '../../domain/entities/api_log_entity.dart';
 import '../../services/di_service.dart';
 import '../../theme/api_inspector_theme.dart';
+import '../../theme/api_inspector_theme_data.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/dimensions.dart';
-import '../states/edit_run_state.dart';
 import '../controllers/edit_run_controller.dart';
+import '../states/edit_run_state.dart';
 
 class EditRunScreen extends StatefulWidget {
   final ApiLogEntity log;
@@ -125,7 +129,7 @@ class _EditRunView extends StatelessWidget {
                   child: FilledButton.icon(
                     icon: const Icon(Icons.play_arrow_rounded, size: 18),
                     label: const Text('RUN'),
-                    onPressed: () => controller.runRequest(),
+                    onPressed: controller.runRequest,
                   ),
                 ),
             ],
@@ -221,6 +225,9 @@ class _EditRunFormState extends State<_EditRunForm> {
         return ListView(
           padding: const EdgeInsets.all(Dimensions.lg),
           children: [
+            ..._replayWarnings(state.originalLog!).map(
+              (w) => _WarningBanner(text: w, theme: theme),
+            ),
             _SectionLabel('Method', theme: theme),
             _MethodSelector(
               selected: state.method,
@@ -278,10 +285,57 @@ class _EditRunFormState extends State<_EditRunForm> {
   }
 }
 
+/// Explains why a replay of a captured request may differ from the
+/// original (redacted secrets, dropped files, truncated bodies).
+List<String> _replayWarnings(ApiLogEntity log) {
+  const p = RedactionConfig.placeholder;
+  final hasRedacted = log.url.contains(p) ||
+      (log.requestBody?.contains(p) ?? false) ||
+      log.requestHeaders.values.any((v) => '$v' == p) ||
+      log.queryParams.values.any((v) => '$v' == p);
+  return [
+    if (hasRedacted) AppStrings.replayRedactedWarning,
+    if (log.isMultipart) AppStrings.replayMultipartWarning,
+    if (log.isTruncated) AppStrings.replayTruncatedWarning,
+  ];
+}
+
+class _WarningBanner extends StatelessWidget {
+  final String text;
+  final ApiInspectorThemeData theme;
+  const _WarningBanner({required this.text, required this.theme});
+
+  @override
+  Widget build(BuildContext context) {
+    final Color color = theme.warningColor;
+    return Container(
+      margin: const EdgeInsets.only(bottom: Dimensions.md),
+      padding: const EdgeInsets.all(Dimensions.md),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.warning_amber_rounded, size: 18, color: color),
+          const SizedBox(width: Dimensions.sm),
+          Expanded(
+            child: Text(text,
+                style: AppTextStyles.bodySmall
+                    .copyWith(color: theme.textPrimaryColor)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _MethodSelector extends StatefulWidget {
   final HttpMethod selected;
   final ValueChanged<HttpMethod> onChanged;
-  final dynamic theme;
+  final ApiInspectorThemeData theme;
 
   const _MethodSelector(
       {required this.selected, required this.onChanged, required this.theme});
@@ -356,7 +410,7 @@ class _MethodSelectorState extends State<_MethodSelector> {
 class _KVSection extends StatefulWidget {
   final String title;
   final Map<TextEditingController, TextEditingController> controllers;
-  final dynamic theme;
+  final ApiInspectorThemeData theme;
   final VoidCallback onChanged;
   final VoidCallback onAdd;
 
@@ -433,7 +487,7 @@ class _KVSectionState extends State<_KVSection> {
 class _StyledTextField extends StatelessWidget {
   final TextEditingController controller;
   final String hintText;
-  final dynamic theme;
+  final ApiInspectorThemeData theme;
   final int maxLines;
   final ValueChanged<String>? onChanged;
 
@@ -479,7 +533,7 @@ class _StyledTextField extends StatelessWidget {
 
 class _SectionLabel extends StatelessWidget {
   final String text;
-  final dynamic theme;
+  final ApiInspectorThemeData theme;
   const _SectionLabel(this.text, {required this.theme});
 
   @override
