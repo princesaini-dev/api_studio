@@ -55,6 +55,28 @@ void main() {
       controller.dispose();
     });
 
+    test('live refresh keeps every loaded page and skips bodies', () async {
+      final params = <GetLogsParams>[];
+      when(() => repo.getLogs(any())).thenAnswer((inv) async {
+        final p = inv.positionalArguments.first as GetLogsParams;
+        params.add(p);
+        final start = p.page * p.pageSize;
+        return [for (var i = 0; i < p.pageSize; i++) _fakeLog('${start + i}')];
+      });
+      final controller = buildController();
+      await controller.loadLogs();
+      await controller.loadMoreLogs();
+      await controller.loadMoreLogs();
+      expect(controller.state.logs.length, 60);
+
+      await controller.loadLogs(refresh: true);
+      expect(controller.state.logs.length, 60);
+      expect(controller.state.currentPage, 2);
+      expect(params.last.pageSize, 60);
+      expect(params.every((p) => !p.includeBodies), isTrue);
+      controller.dispose();
+    });
+
     test('sets failure status on repository error', () async {
       when(() => repo.getLogs(any())).thenThrow(Exception('DB error'));
       final controller = buildController();

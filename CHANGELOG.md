@@ -20,8 +20,17 @@
 - Request/response bodies are stored in a separate lazy box and only read when a log is opened or exported, so they no longer sit in your app's memory.
 - Large bodies (> 32 K characters or big JSON trees) are encoded, redacted and truncated on a background isolate.
 - Opening a large body in the inspector formats it off the UI thread and shows a 64 KB preview with "Show all".
+- JSON/TXT/HAR/Postman exports are redacted and encoded on a background isolate (your custom redaction still applies).
+- New logs arriving while you're scrolled down no longer collapse the list back to the first page.
+- The File Explorer stats files and counts folder contents concurrently; an unreadable folder no longer fails the whole listing.
 - Add-on tabs are built only when first opened; log lookups by id are O(1); list refreshes are coalesced; performance snapshots aren't built when nothing listens.
 - Search also matches HTTP method and exact status code.
+
+### 🔧 Changed
+- `ApiStudio.sessionId`, `ApiStudio.setUser(...)`, `ApiStudio.features` and `ApiStudioFeature` are new public API. `GetLogsParams` gained `includeBodies` (default `true`).
+- Storage schema 3: existing logs are migrated in place on first launch.
+- `SlackProvider` documents that its webhook URL ships inside your app.
+- CI: analysis of the companion packages runs only in their own jobs, and info-level lints are non-fatal (newer Flutter flags every `package:flutter/material.dart` import as deprecated in favour of `package:material_ui`, which can't be adopted while Flutter 3.27 is supported).
 
 ## 1.1.0
 

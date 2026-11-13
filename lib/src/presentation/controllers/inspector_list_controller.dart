@@ -58,12 +58,24 @@ class InspectorListController extends ChangeNotifier {
       notifyListeners();
     }
     try {
-      final logs = await getLogsUseCase(_buildParams(_state, page: 0));
+      // A live refresh reloads every page already shown, so new logs don't
+      // collapse a scrolled list back to the first page.
+      final pages = refresh ? _state.currentPage + 1 : 1;
+      final pageSize = AppConstants.defaultPageSize * pages;
+      final base = _buildParams(_state);
+      final logs = await getLogsUseCase(GetLogsParams(
+        pageSize: pageSize,
+        searchQuery: base.searchQuery,
+        methodFilter: base.methodFilter,
+        statusFilter: base.statusFilter,
+        sortOrder: base.sortOrder,
+        includeBodies: false,
+      ));
       _state = _state.copyWith(
         status: InspectorListStatus.success,
         logs: logs,
-        currentPage: 0,
-        hasReachedMax: logs.length < AppConstants.defaultPageSize,
+        currentPage: pages - 1,
+        hasReachedMax: logs.length < pageSize,
       );
     } catch (e) {
       _state = _state.copyWith(

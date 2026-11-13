@@ -1,7 +1,9 @@
 import 'dart:convert';
 
 import 'package:api_studio/api_studio.dart';
+import 'package:api_studio/src/core/redaction/redactor.dart';
 import 'package:api_studio/src/services/export_formats.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const _r = RedactionConfig.placeholder;
@@ -147,5 +149,16 @@ void main() {
     expect(second['body']['mode'], 'formdata');
     expect(second['body']['formdata'],
         contains(equals({'key': 'cvv', 'value': _r, 'type': 'text'})));
+  });
+
+  test('custom redaction still applies when exporting on another isolate',
+      () async {
+    // Static runtime config is not shared with the isolate; the redactor is
+    // passed explicitly, exactly as ExportService does.
+    final redactor = Redactor(const RedactionConfig(redactBodyKeys: ['name']));
+    final out = await compute(
+        (_) => ExportFormats.toJson(_logs, redactor: redactor), null);
+    expect(out, isNot(contains('"name":"n"')));
+    expectNoSecrets(out);
   });
 }

@@ -24,7 +24,9 @@ class FileExplorerDataSource {
       throw FileSystemException('Directory does not exist', dirPath);
     }
 
-    final entries = <FileExplorerEntry>[];
+    // Stat files and count folder children concurrently: listing a folder
+    // with many subfolders no longer waits on each one in turn.
+    final pending = <Future<FileExplorerEntry?>>[];
     await for (final entity in dir.list(followLinks: false)) {
       final name = entity.path.split(Platform.pathSeparator).last;
       if (name.isEmpty) continue;
@@ -32,23 +34,33 @@ class FileExplorerDataSource {
       final relativePath = path.isEmpty ? name : '$path/$name';
 
       if (entity is Directory) {
-        final children = await entity.list(followLinks: false).length;
-        entries.add(FileExplorerEntry(
-          name: name,
-          path: relativePath,
-          type: FileExplorerEntryType.folder,
-          sizeBytes: children,
-        ));
+        pending.add(entity
+            .list(followLinks: false)
+            .length
+            .then<FileExplorerEntry?>((children) => FileExplorerEntry(
+                  name: name,
+                  path: relativePath,
+                  type: FileExplorerEntryType.folder,
+                  sizeBytes: children,
+                ))
+            .catchError((Object _) => FileExplorerEntry(
+                  name: name,
+                  path: relativePath,
+                  type: FileExplorerEntryType.folder,
+                  sizeBytes: 0,
+                )));
       } else if (entity is File) {
-        final stat = await entity.stat();
-        entries.add(FileExplorerEntry(
-          name: name,
-          path: relativePath,
-          type: FileExplorerEntryType.file,
-          sizeBytes: stat.size,
-        ));
+        pending.add(entity.stat().then<FileExplorerEntry?>(
+            (stat) => FileExplorerEntry(
+                  name: name,
+                  path: relativePath,
+                  type: FileExplorerEntryType.file,
+                  sizeBytes: stat.size,
+                ),
+            onError: (Object _) => null));
       }
     }
+    final entries = (await Future.wait(pending)).nonNulls.toList();
 
     entries.sort((a, b) {
       if (a.isFolder != b.isFolder) return a.isFolder ? -1 : 1;

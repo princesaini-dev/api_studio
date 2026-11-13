@@ -1,22 +1,28 @@
 import 'dart:convert';
 
 import '../core/constants/app_constants.dart';
+import '../core/redaction/redactor.dart';
 import '../core/runtime/api_studio_runtime.dart';
 import '../core/utils/url_utils.dart';
 import '../domain/entities/api_log_entity.dart';
 
 /// Pure converters from captured logs to export formats. Every converter
 /// re-applies the active redaction rules, so exports never contain secrets
-/// even for logs stored by older versions. Internal.
+/// even for logs stored by older versions.
+///
+/// Every converter takes an optional [Redactor]; it defaults to the active
+/// one. Pass it explicitly when running on another isolate, where
+/// `ApiStudioRuntime`'s static configuration is not shared. Internal.
 class ExportFormats {
   ExportFormats._();
 
-  static List<ApiLogEntity> _redact(List<ApiLogEntity> logs) =>
-      logs.map(ApiStudioRuntime.redactor.redact).toList();
+  static List<ApiLogEntity> _redact(
+          List<ApiLogEntity> logs, Redactor? redactor) =>
+      logs.map((redactor ?? ApiStudioRuntime.redactor).redact).toList();
 
   /// API Studio's native JSON export.
-  static String toJson(List<ApiLogEntity> logs) {
-    final list = _redact(logs).map((log) => {
+  static String toJson(List<ApiLogEntity> logs, {Redactor? redactor}) {
+    final list = _redact(logs, redactor).map((log) => {
           'id': log.id,
           'url': log.url,
           'method': log.methodLabel,
@@ -39,8 +45,9 @@ class ExportFormats {
   }
 
   /// Human-readable plain-text export.
-  static String toTxt(List<ApiLogEntity> logs, {DateTime? generatedAt}) {
-    final safe = _redact(logs);
+  static String toTxt(List<ApiLogEntity> logs,
+      {DateTime? generatedAt, Redactor? redactor}) {
+    final safe = _redact(logs, redactor);
     final buffer = StringBuffer()
       ..writeln('API Studio — Export')
       ..writeln('Generated: ${generatedAt ?? DateTime.now()}')
@@ -62,8 +69,8 @@ class ExportFormats {
 
   /// HTTP Archive (HAR 1.2) — importable into Chrome DevTools, Charles,
   /// Proxyman, Insomnia, etc.
-  static String toHar(List<ApiLogEntity> logs) {
-    final entries = _redact(logs).map((log) {
+  static String toHar(List<ApiLogEntity> logs, {Redactor? redactor}) {
+    final entries = _redact(logs, redactor).map((log) {
       final duration = (log.durationMs ?? 0).clamp(0, 1 << 31);
       final uri = UrlUtils.mergeQuery(log.url, log.queryParams);
       final reqType = _mimeType(log.requestHeaders, log.requestBody);
@@ -125,8 +132,9 @@ class ExportFormats {
   }
 
   /// Postman Collection v2.1 — one request per captured log.
-  static String toPostman(List<ApiLogEntity> logs, {DateTime? generatedAt}) {
-    final items = _redact(logs).map((log) {
+  static String toPostman(List<ApiLogEntity> logs,
+      {DateTime? generatedAt, Redactor? redactor}) {
+    final items = _redact(logs, redactor).map((log) {
       final uri = UrlUtils.mergeQuery(log.url, log.queryParams);
       final headers = [
         for (final e in log.requestHeaders.entries)

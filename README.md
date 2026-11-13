@@ -60,14 +60,14 @@ Using something else (Chopper, GraphQL, gRPC-web, a custom client)? Call [`ApiSt
 | Request/response headers, body, query, status, timing, errors and stack traces | ✅ |
 | Multipart, binary, oversized (truncated), cancelled and timed-out requests | ✅ |
 | **Redaction** of headers, JSON keys and query params before storage, upload and export | ✅ |
-| Search, filter by method/status, sort | ✅ |
+| Search (URL, method or status code), filter by method/status, sort | ✅ |
 | **Edit & Run**: modify and replay any captured request | ✅ |
 | Copy as **cURL** | ✅ |
 | Export as **JSON**, **TXT**, **HAR 1.2** and **Postman Collection v2.1** | ✅ |
 | Floating debug button, and opening without a `BuildContext` | ✅ |
 | Add-on: Performance Inspector (FPS, jank, frame times, memory, startup) | opt-in |
 | Add-on: read-only File Explorer for the app sandbox | opt-in |
-| Optional cloud dashboard: [apistudio.cloud](https://apistudio.cloud/) | ✅ |
+| Optional cloud dashboard: [apistudio.cloud](https://apistudio.cloud/), with crash-safe batched upload and session/device/build/tester context | ✅ |
 | Connectivity and failed-API streams, Slack/callback alerts on failures | ✅ |
 | Release-safe: no-op by default outside debug builds | ✅ |
 
@@ -109,9 +109,9 @@ Want shake-to-open? API Studio deliberately doesn't depend on a sensors plugin. 
 - Every captured request can be copied as a POSIX-safe cURL command.
 - **Edit & Run** lets you change the method, URL, headers, query or body and send the request again, including requests captured from Dio and http. Values that were redacted before storage are flagged, so you can re-enter them first. Multipart files and truncated bodies are flagged too.
 
-### � Export logs
+### 📤 Export logs
 
-From the inspector's share menu: **JSON**, **TXT**, **HAR** (open in Chrome DevTools, Charles, Proxyman, Insomnia…) or **Postman collection**. Exports always re-apply your redaction rules.
+From the inspector's share menu: **JSON**, **TXT**, **HAR** (open in Chrome DevTools, Charles, Proxyman, Insomnia…) or **Postman collection**. Exports always re-apply your redaction rules, and are built on a background isolate so large exports don't freeze the app.
 
 ### 🧩 Add-ons
 
@@ -184,13 +184,16 @@ await ApiStudio.flush(); // optional: push pending logs immediately
 
 **What is collected:** for each captured request, the URL, method, request/response headers, query parameters, bodies (multipart files are described, never stored; binary bodies become a size placeholder), status code, duration, error message and stack trace.
 
+When cloud upload is on (`apiKey`), each uploaded log also carries a random per-launch session id, the OS name/version and locale, the SDK version, and — only if you provide them — your app version/build/flavor and the tester set with `ApiStudio.setUser`.
+
 **Where it goes:**
 
 | Destination | When |
 |---|---|
-| Local storage on the device (`hive_ce`, unencrypted, `<app documents>/api_studio`) | Whenever API Studio is enabled |
+| Local storage on the device (`hive_ce`, unencrypted, `<app documents>/api_studio`; bodies in a separate box read only when a log is opened) | Whenever API Studio is enabled |
+| Upload queue on the device (same folder) holding redacted logs not yet accepted by the cloud, at most 1,000 | Only if you pass `apiKey` |
 | [apistudio.cloud](https://apistudio.cloud/) | Only if you pass `apiKey` |
-| Slack / your callback | Only if you configure `notificationConfig`, and only for failed requests |
+| Slack / your callback | Only if you configure `notificationConfig`, and only for failed requests. The Slack webhook URL is compiled into your app, so use it only in internal builds |
 
 **What is redacted** before local storage, before upload, and in cURL and every export:
 
@@ -237,6 +240,8 @@ await ApiStudio.initialize(
   theme: const ApiInspectorThemeData(),
   features: {},                     // add-ons: ApiStudioFeature.performance / .fileExplorer
   appVersion: '2.3.0',              // reported to the cloud dashboard
+  appBuild: '45',
+  appFlavor: 'qa',
   enablePerformanceMonitoring: false,
   enableConnectivityStream: false,
   enableFailedApiStream: false,
@@ -300,9 +305,10 @@ import 'package:api_studio/api_studio.dart' hide CancelToken, ProgressCallback, 
 ## ⬆️ Migrating to 1.2
 
 - Performance and Files tabs are now **add-ons**: pass `features: {ApiStudioFeature.performance, ApiStudioFeature.fileExplorer}` to keep them. (`enablePerformanceMonitoring: true` still adds the Performance tab.)
-- Stored bodies move to a separate on-disk box automatically on first launch.
+- Stored logs are migrated automatically on first launch (bodies move to a separate on-disk box). No code changes are needed otherwise.
+- Using the cloud dashboard? Optionally pass `appVersion` / `appBuild` / `appFlavor` and call `ApiStudio.setUser(...)` so the portal can filter by build and tester.
 
-## ⬆️ Migrating from 1.0.x
+## ⬆️ Migrating from 1.0.x to 1.1
 
 - **Release builds are now off by default.** If you used API Studio in release/QA builds, pass `enabled: true`.
 - **Replace manual `ApiStudio.log` calls in Dio interceptors** with `ApiStudioDioInterceptor` from `api_studio_dio`.

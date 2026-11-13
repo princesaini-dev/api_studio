@@ -4,7 +4,8 @@
 
 | Version | Supported |
 |---------|-----------|
-| 1.1.x   | ✅ |
+| 1.2.x   | ✅ |
+| 1.1.x   | ✅ (security fixes only) |
 | < 1.1   | ❌ (no master switch, no redaction before local storage) |
 
 ## Reporting a vulnerability
@@ -50,15 +51,21 @@ Redaction runs **before** a log is written to local storage, **before** it is qu
 
 - Off unless you pass an `apiKey` to `ApiStudio.initialize`.
 - Uploads only already-redacted logs, over HTTPS, authenticated with your API key.
-- Fire-and-forget: failures are swallowed, never retried in a tight loop, and never thrown into your app.
+- Fire-and-forget: failures are swallowed and never thrown into your app. Retries use exponential backoff (5 s up to 5 min), never a tight loop.
+- Logs waiting to be uploaded are kept in an on-device queue (same folder and protections as local storage, at most 1,000 entries) so they survive app restarts. They are already redacted.
+- Each uploaded log also carries a random per-launch session id, OS name/version and locale, the SDK version, and — only if you set them — app version/build/flavor and the tester identity from `ApiStudio.setUser`. Don't pass personal data to `setUser` unless your testers have agreed to it.
 - To disable it, omit `apiKey` (or pass `null`).
 
 ### 4. Local storage
 
-- Logs are stored with `hive_ce` in `<app documents>/api_studio` (IndexedDB on web). They are **not encrypted**. On a rooted/jailbroken device, or from a device backup, they are readable.
+- Logs are stored with `hive_ce` in `<app documents>/api_studio` (IndexedDB on web); request/response bodies live in a separate box in the same folder. They are **not encrypted**. On a rooted/jailbroken device, or from a device backup, they are readable.
 - Retention defaults: 500 logs, 7 days, 1 MB per body, ~50 MB in total. Older logs are pruned automatically.
 - Users can clear logs at any time from the inspector.
 
 ### 5. File Explorer
 
 The File Explorer is read-only: it can list, open (via the OS) and share files from your app's sandbox, including databases, caches and persisted tokens. It only works while API Studio is enabled, which is one more reason never to enable API Studio in end-user builds.
+
+### 6. Slack notifications
+
+`NotificationConfig(slackWebhook: ...)` posts failed requests to Slack directly from the device. The webhook URL is compiled into your app and can be extracted from the build, so use it only in internal builds and rotate the webhook if a build leaks.
