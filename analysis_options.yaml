@@ -10,8 +10,11 @@ analyzer:
     missing_return: error
   exclude:
     - build/**
-    - example/build/**
-    - packages/*/build/**
+    # Separate packages with their own pubspec, analysis_options and CI job.
+    # Analyzing them from the root fails when their dependencies are not
+    # resolved (e.g. `package:dio` in CI).
+    - example/**
+    - packages/**
 
 linter:
   rules:

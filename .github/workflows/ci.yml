@@ -54,8 +54,12 @@ jobs:
         if: matrix.package == 'api_studio' && matrix.flutter-label == 'stable'
         run: dart format --output=none --set-exit-if-changed lib test packages example/lib
 
+      # Infos are not fatal: newer stable Flutter reports every
+      # `package:flutter/material.dart` import as deprecated (moved to
+      # `package:material_ui`), which cannot be adopted while the minimum
+      # supported Flutter is 3.27. Warnings and errors still fail the job.
       - name: Analyze
-        run: flutter analyze
+        run: flutter analyze --no-fatal-infos
 
       - name: Test
         run: flutter test
@@ -78,4 +82,4 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter analyze
+      - run: flutter analyze --no-fatal-infos
