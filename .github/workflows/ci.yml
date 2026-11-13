@@ -64,6 +64,10 @@ jobs:
       - name: Test
         run: flutter test
 
+      - name: Show files changed by the toolchain
+        if: matrix.flutter-label == 'stable'
+        run: git status --porcelain && git diff
+
       - name: Publish dry run
         if: matrix.flutter-label == 'stable'
         run: dart pub publish --dry-run
