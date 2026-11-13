@@ -32,7 +32,12 @@ void main() {
   });
 
   test('reads 1.0.7 logs with hive_ce and redacts them in place', () async {
-    await ApiStudio.initialize(enabled: true);
+    // The fixture's logs have fixed timestamps from when it was recorded;
+    // disable age-based pruning so the test does not expire with time.
+    await ApiStudio.initialize(
+      enabled: true,
+      logRetention: const Duration(days: 365 * 100),
+    );
     expect(DiService.isInitialized, isTrue);
 
     final logs = await DiService.repository.getLogs(const GetLogsParams());
