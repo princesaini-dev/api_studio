@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/constants/app_strings.dart';
+import '../../core/runtime/api_studio_feature.dart';
 import '../../core/runtime/api_studio_runtime.dart';
 import '../../services/di_service.dart';
 import '../../theme/api_inspector_theme.dart';
@@ -20,8 +21,12 @@ import 'performance_inspector_screen.dart';
 /// `ApiStudio.showNavigation(context)` — instead of pushing each feature
 /// screen separately.
 ///
-/// The three feature screens are kept alive via [IndexedStack] so switching
-/// tabs never rebuilds or reinitializes their controllers/state.
+/// API Logs is always shown. Performance and Files are add-ons that only get
+/// a tab when enabled via `ApiStudio.initialize(features: ...)`; with no
+/// add-ons the bottom bar is hidden entirely.
+///
+/// Tabs are built the first time they are opened and then kept alive via
+/// [IndexedStack], so opening API Studio never pays for tabs you don't use.
 class ApiStudioNavigationScreen extends StatefulWidget {
   final int initialIndex;
 
@@ -43,20 +48,33 @@ class ApiStudioNavigationScreen extends StatefulWidget {
 }
 
 class _ApiStudioNavigationScreenState extends State<ApiStudioNavigationScreen> {
-  late int _selectedIndex = widget.initialIndex;
-
-  // Each feature screen is created once and kept alive by IndexedStack —
-  // opening the navigation never rebuilds or re-fetches a tab the user
-  // hasn't visited yet (lazy bloc creation happens inside each screen).
-  static const List<Widget> _screens = [
-    RepaintBoundary(child: InspectorListScreen()),
-    RepaintBoundary(child: PerformanceInspectorScreen()),
-    RepaintBoundary(child: FileExplorerScreen()),
+  late final List<_NavTab> _tabs = [
+    _kLogsTab,
+    if (ApiStudioRuntime.features.contains(ApiStudioFeature.performance))
+      _kPerformanceTab,
+    if (ApiStudioRuntime.features.contains(ApiStudioFeature.fileExplorer))
+      _kFilesTab,
   ];
+
+  late int _selectedIndex = _initialTab();
+  late final List<bool> _built =
+      List.generate(_tabs.length, (i) => i == _selectedIndex);
+
+  /// Maps the public 0/1/2 index to a visible tab, falling back to Logs.
+  int _initialTab() {
+    const legacy = [_TabId.logs, _TabId.performance, _TabId.files];
+    final requested = widget.initialIndex;
+    if (requested < 0 || requested >= legacy.length) return 0;
+    final index = _tabs.indexWhere((t) => t.id == legacy[requested]);
+    return index < 0 ? 0 : index;
+  }
 
   void _onTabSelected(int index) {
     if (index == _selectedIndex) return;
-    setState(() => _selectedIndex = index);
+    setState(() {
+      _selectedIndex = index;
+      _built[index] = true;
+    });
   }
 
   Future<void> _openDashboard() async {
@@ -84,19 +102,28 @@ class _ApiStudioNavigationScreenState extends State<ApiStudioNavigationScreen> {
       backgroundColor: theme.backgroundColor,
       body: IndexedStack(
         index: _selectedIndex,
-        children: _screens,
+        children: [
+          for (var i = 0; i < _tabs.length; i++)
+            _built[i]
+                ? RepaintBoundary(child: _tabs[i].build())
+                : const SizedBox.shrink(),
+        ],
       ),
       bottomNavigationBar: RepaintBoundary(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             _DashboardStrip(theme: theme, onTap: _openDashboard),
-            const SizedBox(height: Dimensions.sm),
-            _FloatingBottomNav(
-              theme: theme,
-              selectedIndex: _selectedIndex,
-              onTabSelected: _onTabSelected,
-            ),
+            if (_tabs.length > 1) ...[
+              const SizedBox(height: Dimensions.sm),
+              _FloatingBottomNav(
+                theme: theme,
+                tabs: _tabs,
+                selectedIndex: _selectedIndex,
+                onTabSelected: _onTabSelected,
+              ),
+            ] else
+              const SafeArea(top: false, child: SizedBox(height: 4)),
           ],
         ),
       ),
@@ -180,18 +207,41 @@ class _DashboardStrip extends StatelessWidget {
   }
 }
 
+enum _TabId { logs, performance, files }
+
 class _NavTab {
+  final _TabId id;
   final IconData icon;
   final String label;
+  final Widget Function() build;
 
-  const _NavTab({required this.icon, required this.label});
+  const _NavTab({
+    required this.id,
+    required this.icon,
+    required this.label,
+    required this.build,
+  });
 }
 
-const List<_NavTab> _kNavTabs = [
-  _NavTab(icon: Icons.radar_rounded, label: AppStrings.navLogs),
-  _NavTab(icon: Icons.speed_rounded, label: AppStrings.navPerformance),
-  _NavTab(icon: Icons.folder_rounded, label: AppStrings.navFiles),
-];
+Widget _logs() => const InspectorListScreen();
+Widget _performance() => const PerformanceInspectorScreen();
+Widget _files() => const FileExplorerScreen();
+
+const _kLogsTab = _NavTab(
+    id: _TabId.logs,
+    icon: Icons.radar_rounded,
+    label: AppStrings.navLogs,
+    build: _logs);
+const _kPerformanceTab = _NavTab(
+    id: _TabId.performance,
+    icon: Icons.speed_rounded,
+    label: AppStrings.navPerformance,
+    build: _performance);
+const _kFilesTab = _NavTab(
+    id: _TabId.files,
+    icon: Icons.folder_rounded,
+    label: AppStrings.navFiles,
+    build: _files);
 
 /// A floating, rounded bottom navigation bar.
 ///
@@ -201,11 +251,13 @@ const List<_NavTab> _kNavTabs = [
 /// content transition.
 class _FloatingBottomNav extends StatelessWidget {
   final ApiInspectorThemeData theme;
+  final List<_NavTab> tabs;
   final int selectedIndex;
   final ValueChanged<int> onTabSelected;
 
   const _FloatingBottomNav({
     required this.theme,
+    required this.tabs,
     required this.selectedIndex,
     required this.onTabSelected,
   });
@@ -244,7 +296,7 @@ class _FloatingBottomNav extends StatelessWidget {
             ),
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final itemWidth = constraints.maxWidth / _kNavTabs.length;
+                final itemWidth = constraints.maxWidth / tabs.length;
                 return Stack(
                   alignment: Alignment.center,
                   children: [
@@ -252,7 +304,7 @@ class _FloatingBottomNav extends StatelessWidget {
                       duration: const Duration(milliseconds: 220),
                       curve: Curves.easeOutCubic,
                       alignment: Alignment(
-                        _indicatorAlignmentX(selectedIndex, _kNavTabs.length),
+                        _indicatorAlignmentX(selectedIndex, tabs.length),
                         0,
                       ),
                       child: Container(
@@ -269,8 +321,8 @@ class _FloatingBottomNav extends StatelessWidget {
                       ),
                     ),
                     Row(
-                      children: List.generate(_kNavTabs.length, (index) {
-                        final tab = _kNavTabs[index];
+                      children: List.generate(tabs.length, (index) {
+                        final tab = tabs[index];
                         final selected = index == selectedIndex;
                         final color = selected
                             ? theme.primaryColor

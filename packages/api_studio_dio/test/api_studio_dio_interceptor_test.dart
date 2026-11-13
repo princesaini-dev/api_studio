@@ -50,6 +50,11 @@ void main() {
 
   Future<ApiLogEntity> lastLog() async {
     await pumpEventQueue();
+    // Large bodies are prepared on a background isolate, so the log can
+    // arrive a little after the request completes.
+    for (var i = 0; i < 250 && logs.isEmpty; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    }
     expect(logs, isNotEmpty, reason: 'expected a captured log');
     return logs.last;
   }

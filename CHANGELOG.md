@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.2.0
+
+### ⚠️ Behavior changes
+- **Performance and Files are now opt-in add-ons.** API Logs are the core; the other tabs only appear with `ApiStudio.initialize(features: {ApiStudioFeature.performance, ApiStudioFeature.fileExplorer})`. `enablePerformanceMonitoring: true` still adds the Performance tab. With no add-ons the API Studio screen has no bottom bar. `showPerformanceInspector`/`showFileExplorer` keep working when called directly.
+
+### ✨ Added
+- Cloud logs carry a per-launch `ApiStudio.sessionId`, device/OS info, app version/build/flavor (`initialize(appVersion:, appBuild:, appFlavor:)`), the tester (`ApiStudio.setUser(...)`), query parameters, request/response sizes, the truncated flag and the SDK version.
+
+### 🐛 Fixed
+- **Failed requests never reached the cloud dashboard.** Network failures, timeouts and cancellations have no status code; the backend rejected them and the SDK silently discarded them. They are now uploaded.
+- Uploaded logs used the upload time instead of the request time.
+- A revoked key or rate limit (401/403/429) discarded every pending log; the queue is now kept and retried with backoff.
+- `failedApiCount` only counted errors among the newest 20 logs.
+- `flush()` returned early while another upload was in flight.
+
+### ⚡ Performance
+- Pending cloud uploads are persisted on disk (survive crashes and kills) and sent in gzip batches of up to 50 instead of one request per log.
+- Request/response bodies are stored in a separate lazy box and only read when a log is opened or exported, so they no longer sit in your app's memory.
+- Large bodies (> 32 K characters or big JSON trees) are encoded, redacted and truncated on a background isolate.
+- Opening a large body in the inspector formats it off the UI thread and shows a 64 KB preview with "Show all".
+- Add-on tabs are built only when first opened; log lookups by id are O(1); list refreshes are coalesced; performance snapshots aren't built when nothing listens.
+- Search also matches HTTP method and exact status code.
+
 ## 1.1.0
 
 ### ⚠️ Behavior changes — please read

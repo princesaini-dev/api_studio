@@ -9,6 +9,7 @@ import 'api_client/core/api_studio_remote_logger.dart';
 import 'core/pipeline/log_entry_builder.dart';
 import 'core/pipeline/log_pipeline.dart';
 import 'core/redaction/redaction_config.dart';
+import 'core/runtime/api_studio_feature.dart';
 import 'core/runtime/api_studio_runtime.dart';
 import 'domain/entities/api_log_entity.dart';
 import 'domain/entities/performance_snapshot.dart';
@@ -54,6 +55,10 @@ class ApiStudio {
   /// Integrations (`ApiStudioDioInterceptor`, `ApiStudioHttpClient`) check
   /// this first so disabled builds pay almost nothing.
   static bool get isEnabled => _isInitialized && ApiStudioRuntime.enabled;
+
+  /// Add-ons enabled via `initialize(features: ...)`.
+  static Set<ApiStudioFeature> get features =>
+      Set.unmodifiable(ApiStudioRuntime.features);
 
   /// Whether the built-in API Client was enabled during [initialize].
   static bool get isApiClientEnabled => _enableApiClient;
@@ -115,6 +120,12 @@ class ApiStudio {
   /// traffic, it is still initialized when [enabled] is `false` — it simply
   /// stops being logged.
   ///
+  /// [features] enables optional add-on tabs next to API Logs (the core):
+  /// [ApiStudioFeature.performance] and [ApiStudioFeature.fileExplorer].
+  /// None are enabled by default; with only API Logs, the API Studio screen
+  /// has no bottom bar. `showPerformanceInspector` / `showFileExplorer`
+  /// still open those screens directly when called.
+  ///
   /// [enablePerformanceMonitoring] opts in to performance collection and
   /// aggregated telemetry upload (at most once per interval, requires
   /// [apiKey]). Defaults to `false`.
@@ -139,6 +150,7 @@ class ApiStudio {
     int? maxBodyBytes,
     RedactionConfig? redaction,
     GlobalKey<NavigatorState>? navigatorKey,
+    Set<ApiStudioFeature>? features,
     String? appVersion,
     String? appBuild,
     String? appFlavor,
@@ -170,6 +182,10 @@ class ApiStudio {
     if (navigatorKey != null) _navigatorKey = navigatorKey;
     if (redaction != null) ApiStudioRuntime.redaction = redaction;
     if (maxBodyBytes != null) ApiStudioRuntime.maxBodyBytes = maxBodyBytes;
+    ApiStudioRuntime.features = {
+      ...?features,
+      if (enablePerformanceMonitoring) ApiStudioFeature.performance,
+    };
 
     if (!isOn) {
       _disable();
@@ -405,7 +421,7 @@ class ApiStudio {
   /// with API Logs, Performance and File Explorer tabs. No-op when disabled.
   ///
   /// [initialIndex] selects which tab is shown first (`0` = Logs,
-  /// `1` = Performance, `2` = Files).
+  /// `1` = Performance, `2` = Files); a disabled add-on falls back to Logs.
   static void showNavigation(
     BuildContext context, {
     ApiInspectorThemeData? theme,

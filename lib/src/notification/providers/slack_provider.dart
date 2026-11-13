@@ -4,6 +4,11 @@ import 'dart:io';
 import '../models/api_log_notification_model.dart';
 import 'notification_provider.dart';
 
+/// Posts failed requests to a Slack Incoming Webhook from the device.
+///
+/// **Security:** the webhook URL is compiled into your app, and anyone with
+/// the build can extract it and post to your channel. Only use this in
+/// internal QA builds, and rotate the webhook if a build leaks.
 class SlackProvider implements NotificationProvider {
   /// Slack Incoming Webhook URL
   final String webhookUrl;

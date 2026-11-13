@@ -7,6 +7,7 @@ export 'src/core/errors/exceptions.dart' hide NetworkException;
 export 'src/core/errors/failures.dart';
 // Privacy
 export 'src/core/redaction/redaction_config.dart';
+export 'src/core/runtime/api_studio_feature.dart';
 export 'src/core/utils/curl_generator.dart';
 export 'src/core/utils/file_type_helper.dart';
 export 'src/domain/entities/api_log_entity.dart';

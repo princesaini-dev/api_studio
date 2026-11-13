@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:api_studio/api_studio.dart';
 import 'package:api_studio/src/core/constants/app_strings.dart';
+import 'package:api_studio/src/core/runtime/api_studio_runtime.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -14,7 +15,10 @@ void main() {
 
   setUpAll(() async {
     tempDir = installFakePathProvider();
-    await ApiStudio.initialize();
+    await ApiStudio.initialize(features: {
+      ApiStudioFeature.performance,
+      ApiStudioFeature.fileExplorer,
+    });
   });
 
   tearDownAll(() {
@@ -113,6 +117,35 @@ void main() {
 
     indexedStack = tester.widgetList<IndexedStack>(indexedStackFinder).first;
     expect(indexedStack.index, 2);
+  });
+
+  testWidgets('add-on tabs are only built when first opened', (tester) async {
+    await tester.pumpWidget(wrap(const ApiStudioNavigationScreen()));
+    await tester.pump();
+
+    expect(find.byType(PerformanceInspectorScreen), findsNothing);
+    expect(find.byType(FileExplorerScreen), findsNothing);
+
+    await tester.tap(find.text(AppStrings.navPerformance));
+    await tester.pump();
+    expect(find.byType(PerformanceInspectorScreen), findsOneWidget);
+    expect(find.byType(FileExplorerScreen), findsNothing);
+  });
+
+  testWidgets('logs-only setup hides the bottom bar', (tester) async {
+    final previous = ApiStudioRuntime.features;
+    ApiStudioRuntime.features = const {};
+    addTearDown(() => ApiStudioRuntime.features = previous);
+
+    await tester
+        .pumpWidget(wrap(const ApiStudioNavigationScreen(initialIndex: 2)));
+    await tester.pump();
+
+    expect(find.text(AppStrings.navPerformance), findsNothing);
+    expect(find.text(AppStrings.navFiles), findsNothing);
+    // A disabled add-on index falls back to Logs.
+    expect(find.text(AppStrings.appTitle), findsOneWidget);
+    expect(find.byKey(const Key('apiStudioDashboardStrip')), findsOneWidget);
   });
 
   testWidgets('ApiStudio.showNavigation opens the navigation screen',

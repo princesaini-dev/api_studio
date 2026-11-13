@@ -23,7 +23,7 @@ That's it. Every Dio request now appears in the inspector, with secrets redacted
 
 ```yaml
 dependencies:
-  api_studio: ^1.1.0
+  api_studio: ^1.2.0
   api_studio_dio: ^1.0.0    # if you use Dio
   # api_studio_http: ^1.0.0 # if you use package:http
 ```
@@ -65,8 +65,8 @@ Using something else (Chopper, GraphQL, gRPC-web, a custom client)? Call [`ApiSt
 | Copy as **cURL** | ✅ |
 | Export as **JSON**, **TXT**, **HAR 1.2** and **Postman Collection v2.1** | ✅ |
 | Floating debug button, and opening without a `BuildContext` | ✅ |
-| Performance Inspector: FPS, jank, frame times, memory, startup | ✅ |
-| Read-only File Explorer for the app sandbox | ✅ |
+| Add-on: Performance Inspector (FPS, jank, frame times, memory, startup) | opt-in |
+| Add-on: read-only File Explorer for the app sandbox | opt-in |
 | Optional cloud dashboard: [apistudio.cloud](https://apistudio.cloud/) | ✅ |
 | Connectivity and failed-API streams, Slack/callback alerts on failures | ✅ |
 | Release-safe: no-op by default outside debug builds | ✅ |
@@ -81,7 +81,7 @@ Using something else (Chopper, GraphQL, gRPC-web, a custom client)? Call [`ApiSt
 ### Opening API Studio
 
 ```dart
-ApiStudio.showNavigation(context);           // Logs + Performance + Files
+ApiStudio.showNavigation(context);           // Logs (+ enabled add-on tabs)
 ApiStudio.show(context);                     // Logs only
 ApiStudio.showPerformanceInspector(context);
 ApiStudio.showFileExplorer(context);
@@ -113,12 +113,25 @@ Want shake-to-open? API Studio deliberately doesn't depend on a sensors plugin. 
 
 From the inspector's share menu: **JSON**, **TXT**, **HAR** (open in Chrome DevTools, Charles, Proxyman, Insomnia…) or **Postman collection**. Exports always re-apply your redaction rules.
 
+### 🧩 Add-ons
+
+API Logs are the core of API Studio. Performance and Files are add-ons with their own tab, enabled only when you ask for them:
+
+```dart
+await ApiStudio.initialize(features: {
+  ApiStudioFeature.performance,
+  ApiStudioFeature.fileExplorer,
+});
+```
+
+With no add-ons, the API Studio screen is just the logs, without a bottom bar.
+
 ### ⚡ Performance Inspector
 
 Opt-in, on-device performance monitoring: current/average/min/max FPS, frame time, janky frames and jank rate, UI and raster thread time, memory (where available), startup phases, per-screen tracking, a timeline and an overall health score. Histories are bounded, so memory can't grow without limit.
 
 ```dart
-await ApiStudio.initialize(enablePerformanceMonitoring: true);
+await ApiStudio.initialize(enablePerformanceMonitoring: true); // adds the tab too
 // or toggle at runtime:
 ApiStudio.startPerformanceMonitoring();
 ApiStudio.stopPerformanceMonitoring();
@@ -149,13 +162,19 @@ API Studio gives you an **in-app inspector** that works on any build you choose 
 Pass an API key from [apistudio.cloud](https://apistudio.cloud/) to forward captured logs to your team's dashboard:
 
 ```dart
-await ApiStudio.initialize(apiKey: 'YOUR_API_KEY');
+await ApiStudio.initialize(
+  apiKey: 'YOUR_API_KEY',
+  appVersion: '2.3.0', appBuild: '45', appFlavor: 'qa', // shown in the portal
+);
+ApiStudio.setUser(id: 'tester-7', name: 'Priya'); // after sign-in; setUser() to clear
 await ApiStudio.flush(); // optional: push pending logs immediately
 ```
 
 - Off unless you pass an `apiKey`.
 - Uploads only already-redacted logs. Fire-and-forget: it never blocks, delays or throws into your app.
-- Debounced near-real-time sync (immediate on errors), with auto-flush when the app is backgrounded.
+- **Nothing is lost on a crash or kill:** pending logs are queued on disk and sent on the next launch.
+- Logs are sent in gzip-compressed batches (immediately on errors, otherwise debounced), with exponential backoff when offline and auto-flush when the app is backgrounded.
+- Each log carries a per-launch `ApiStudio.sessionId`, device/OS, your app version/build and the tester you set, so the portal can filter by session, build or tester.
 - Requests to the API Studio backend itself are never captured.
 - Optional aggregated performance telemetry (`enablePerformanceMonitoring: true`), uploaded at most once per interval.
 
@@ -216,6 +235,8 @@ await ApiStudio.initialize(
   maxBodyBytes: 1024 * 1024,
   navigatorKey: myNavigatorKey,     // for ApiStudio.open() / floating button
   theme: const ApiInspectorThemeData(),
+  features: {},                     // add-ons: ApiStudioFeature.performance / .fileExplorer
+  appVersion: '2.3.0',              // reported to the cloud dashboard
   enablePerformanceMonitoring: false,
   enableConnectivityStream: false,
   enableFailedApiStream: false,
@@ -275,6 +296,11 @@ import 'package:api_studio/api_studio.dart' hide CancelToken, ProgressCallback, 
 ```
 
 ---
+
+## ⬆️ Migrating to 1.2
+
+- Performance and Files tabs are now **add-ons**: pass `features: {ApiStudioFeature.performance, ApiStudioFeature.fileExplorer}` to keep them. (`enablePerformanceMonitoring: true` still adds the Performance tab.)
+- Stored bodies move to a separate on-disk box automatically on first launch.
 
 ## ⬆️ Migrating from 1.0.x
 

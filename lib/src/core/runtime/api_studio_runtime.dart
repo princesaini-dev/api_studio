@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../constants/app_constants.dart';
 import '../redaction/redaction_config.dart';
 import '../redaction/redactor.dart';
+import 'api_studio_feature.dart';
 
 /// Process-wide runtime configuration shared by the logging pipeline,
 /// exporters and UI. Internal.
@@ -16,6 +17,9 @@ class ApiStudioRuntime {
   /// Maximum size (in UTF-8 bytes) retained for a single request or
   /// response body. Larger bodies are truncated and flagged.
   static int maxBodyBytes = AppConstants.defaultMaxBodyBytes;
+
+  /// Enabled add-ons (see [ApiStudioFeature]). API Logs are always on.
+  static Set<ApiStudioFeature> features = const {};
 
   static RedactionConfig _redaction = const RedactionConfig();
   static Redactor _redactor = Redactor(_redaction);
@@ -33,6 +37,7 @@ class ApiStudioRuntime {
   static void debugReset() {
     enabled = false;
     maxBodyBytes = AppConstants.defaultMaxBodyBytes;
+    features = const {};
     redaction = const RedactionConfig();
   }
 }

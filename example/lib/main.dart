@@ -42,6 +42,9 @@ Future<void> main() async {
     enableConnectivityStream: true,
     enableFailedApiStream: true,
     enablePerformanceMonitoring: true,
+    // Add-on tabs next to API Logs.
+    features: {ApiStudioFeature.performance, ApiStudioFeature.fileExplorer},
+    appVersion: '1.0.0',
     redaction: const RedactionConfig(redactBodyKeys: ['ssn']),
   );
   runApp(const ExampleApp());
