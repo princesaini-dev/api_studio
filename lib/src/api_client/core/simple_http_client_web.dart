@@ -25,6 +25,8 @@ class SimpleHttpClient {
     required Map<String, String> headers,
     required String body,
     Duration? timeout,
+    // Browsers have no synchronous gzip encoder; bodies are sent as-is.
+    bool gzip = false,
   }) async {
     final completer = Completer<SimpleHttpResponse>();
 

@@ -11,6 +11,10 @@ class HiveConstants {
   static const String performanceStateBoxName = 'api_studio_performance_state';
   static const String lastPerformanceUploadKey = 'lastPerformanceUploadAt';
 
+  /// Box holding cloud-upload payloads that have not been accepted by the
+  /// backend yet, so they survive app restarts and crashes.
+  static const String uploadQueueBoxName = 'api_studio_upload_queue';
+
   /// Box holding storage metadata (schema version) used for migrations.
   static const String metaBoxName = 'api_studio_meta';
   static const String schemaVersionKey = 'schemaVersion';

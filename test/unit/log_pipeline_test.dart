@@ -12,11 +12,35 @@ import '../test_helpers/fake_simple_http_client.dart';
 
 class _ThrowingClient extends SimpleHttpClient {
   @override
-  Future<SimpleHttpResponse> post(Uri url,
-          {required Map<String, String> headers,
-          required String body,
-          Duration? timeout}) =>
+  Future<SimpleHttpResponse> post(
+    Uri url, {
+    required Map<String, String> headers,
+    required String body,
+    Duration? timeout,
+    bool gzip = false,
+  }) =>
       Future.error(const SocketException('offline'));
+
+  @override
+  void close() {}
+}
+
+/// Backend without `/logs/batch` (404), accepting single logs.
+class _LegacyBackendClient extends SimpleHttpClient {
+  int singleUploads = 0;
+
+  @override
+  Future<SimpleHttpResponse> post(Uri url,
+      {required Map<String, String> headers,
+      required String body,
+      Duration? timeout,
+      bool gzip = false}) async {
+    if (url.path.endsWith('/batch')) {
+      return const SimpleHttpResponse(statusCode: 404, body: '');
+    }
+    singleUploads++;
+    return const SimpleHttpResponse(statusCode: 202, body: '{}');
+  }
 
   @override
   void close() {}
@@ -74,7 +98,9 @@ void main() {
     await ApiStudio.flush();
     final uploaded = network.requests.single;
     expect(uploaded.headers['Authorization'], 'Bearer test-key');
-    final payload = uploaded.body! as Map<String, dynamic>;
+    expect(uploaded.url.path, '/api/v1/logs/batch');
+    expect(uploaded.gzip, isTrue);
+    final payload = network.uploadedLogs.single;
     expect(payload['url'], 'https://api.example.com/login?token=$_r');
     expect(payload['request']['headers']['Authorization'], _r);
     expect(payload['request']['body'], {'email': 'a@b.c', 'password': _r});
@@ -140,6 +166,7 @@ void main() {
 
   test('network failures upload with integer status/duration and real time',
       () async {
+    await ApiStudio.flush();
     network.requests.clear();
     final at = DateTime.utc(2026, 1, 2, 3, 4, 5);
     await ApiStudio.log(
@@ -149,11 +176,53 @@ void main() {
       timestamp: at,
     );
     await ApiStudio.flush();
-    final payload = network.requests.single.body! as Map<String, dynamic>;
+    final payload = network.uploadedLogs.single;
     expect(payload['status_code'], 0);
     expect(payload['duration_ms'], 0);
     expect(payload['error'], 'SocketException: offline');
     expect(payload['timestamp'], at.toIso8601String());
+    expect(payload['status'], 'error');
+    expect(payload['session_id'], ApiStudio.sessionId);
+    expect(payload['sdk'], {'name': 'api_studio', 'version': '1.2.0'});
+    expect((payload['device'] as Map)['os'], isNotEmpty);
+  });
+
+  test('batches many logs into one gzip request with app + user context',
+      () async {
+    await ApiStudio.flush();
+    network.requests.clear();
+    ApiStudio.setUser(id: 'tester-7');
+    for (var i = 0; i < 12; i++) {
+      await ApiStudio.log(
+          url: 'https://api.example.com/items/$i',
+          method: 'GET',
+          statusCode: 200,
+          queryParameters: {'page': '$i'});
+    }
+    await ApiStudio.flush();
+    // 10 pending logs trigger an early batch; the rest go with flush().
+    expect(network.requests.length, lessThanOrEqualTo(2));
+    expect(network.requests.every((r) => r.gzip), isTrue);
+    final logs = network.uploadedLogs;
+    expect(logs, hasLength(12));
+    expect(logs.first['user'], {'id': 'tester-7'});
+    expect(logs.first['query_params'], {'page': '0'});
+    ApiStudio.setUser();
+  });
+
+  test('falls back to single-log uploads on an older backend', () async {
+    final legacy = _LegacyBackendClient();
+    ApiStudioRemoteLogger.debugOverride(client: legacy);
+    for (var i = 0; i < 3; i++) {
+      await ApiStudio.log(
+          url: 'https://api.example.com/legacy/$i',
+          method: 'GET',
+          statusCode: 200);
+    }
+    await ApiStudio.flush();
+    expect(ApiStudioRemoteLogger.pendingPayloadCount, 0);
+    expect(legacy.singleUploads, 3);
+    ApiStudioRemoteLogger.debugOverride(client: network);
   });
 
   test('401/429 from the backend keeps the queue for a later retry', () async {
@@ -170,7 +239,7 @@ void main() {
     ApiStudioRemoteLogger.debugOverride(client: network);
     await ApiStudio.flush();
     expect(ApiStudioRemoteLogger.pendingPayloadCount, 0);
-    expect(network.requests, hasLength(2));
+    expect(network.uploadedLogs, hasLength(2));
   });
 
   test('remote upload failures never throw into the host app', () async {

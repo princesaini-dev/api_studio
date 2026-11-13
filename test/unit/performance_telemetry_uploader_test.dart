@@ -37,6 +37,7 @@ class _FakeSimpleHttpClient extends SimpleHttpClient {
     required Map<String, String> headers,
     required String body,
     Duration? timeout,
+    bool gzip = false,
   }) async {
     requestCount++;
     return Future.value(_handler(url, headers, body));

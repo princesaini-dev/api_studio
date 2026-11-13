@@ -122,6 +122,10 @@ class ApiStudio {
   /// [navigatorKey] lets [open] and [showFloatingButton] work without a
   /// [BuildContext].
   ///
+  /// [appVersion], [appBuild] and [appFlavor] are attached to logs uploaded
+  /// to the cloud portal so you can tell which build a failure came from.
+  /// Identify the tester with [setUser].
+  ///
   /// Calling [initialize] more than once is safe: the latest values are
   /// applied, while one-time setup (local storage) only runs once.
   static Future<void> initialize({
@@ -135,6 +139,9 @@ class ApiStudio {
     int? maxBodyBytes,
     RedactionConfig? redaction,
     GlobalKey<NavigatorState>? navigatorKey,
+    String? appVersion,
+    String? appBuild,
+    String? appFlavor,
     Duration? requestTimeout,
     bool enableConnectivityStream = false,
     bool enableFailedApiStream = false,
@@ -175,6 +182,8 @@ class ApiStudio {
     ApiStudioRuntime.enabled = true;
 
     try {
+      ApiStudioRemoteLogger.setAppInfo(
+          version: appVersion, build: appBuild, flavor: appFlavor);
       ApiStudioRemoteLogger.configure(effectiveApiKey);
     } catch (_) {
       // Never let logging setup affect app startup.
@@ -192,6 +201,11 @@ class ApiStudio {
       );
     } catch (e) {
       debugPrint('[ApiStudio] Local storage unavailable: $e');
+    }
+
+    if (effectiveApiKey != null) {
+      // Pending cloud uploads survive restarts once the queue is on disk.
+      await ApiStudioRemoteLogger.attachPersistentQueue();
     }
 
     _initClient(
@@ -480,6 +494,17 @@ class ApiStudio {
       PerformanceMonitor.instance.snapshotStream;
 
   // ── Cloud Sync & Universal Logging API ──────────────────────────────
+
+  /// Identifies the tester / signed-in user on logs uploaded to the cloud
+  /// portal, so you can filter "everything Priya saw". Call it again after
+  /// sign-in, and with no arguments on sign-out. Only sent when an API key
+  /// is configured; never stored locally.
+  static void setUser({String? id, String? name, String? email}) =>
+      ApiStudioRemoteLogger.setUser(id: id, name: name, email: email);
+
+  /// Identifier of this app launch, sent with every uploaded log. Filter by
+  /// it in the portal to see one session's requests in order.
+  static String get sessionId => ApiStudioRemoteLogger.sessionId;
 
   /// Immediately flushes all pending remote logs to the API Studio Cloud
   /// portal (`https://apistudio.cloud/`). No-op when disabled or when no

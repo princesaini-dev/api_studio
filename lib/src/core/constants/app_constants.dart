@@ -36,6 +36,13 @@ class AppConstants {
 
   static String get apiStudioLogsUrl => '$apiStudioBaseUrl$apiStudioLogsPath';
 
+  /// Batch ingestion endpoint (backend ≥ SDK ingest v2). Falls back to
+  /// [apiStudioLogsUrl] when the backend does not support it yet.
+  static String get apiStudioLogsBatchUrl => '$apiStudioLogsUrl/batch';
+
+  /// Version of this package, reported with uploaded logs.
+  static const String sdkVersion = '1.2.0';
+
   /// Endpoint that aggregated performance telemetry is POSTed to.
   ///
   /// Uses the same [apiStudioBaseUrl] as [apiStudioLogsUrl] — performance

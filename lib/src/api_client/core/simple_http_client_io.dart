@@ -28,7 +28,11 @@ class SimpleHttpClient {
     required Map<String, String> headers,
     required String body,
     Duration? timeout,
+    bool gzip = false,
   }) async {
+    final bytes = gzip
+        ? GZipCodec(level: 6).encode(utf8.encode(body))
+        : utf8.encode(body);
     final completer = Completer<SimpleHttpResponse>();
     Null fail(Object e, StackTrace st) {
       if (!completer.isCompleted) completer.completeError(e, st);
@@ -39,8 +43,9 @@ class SimpleHttpClient {
       for (final e in headers.entries) {
         ioRequest.headers.set(e.key, e.value);
       }
-      ioRequest.contentLength = utf8.encode(body).length;
-      ioRequest.write(body);
+      if (gzip) ioRequest.headers.set('Content-Encoding', 'gzip');
+      ioRequest.contentLength = bytes.length;
+      ioRequest.add(bytes);
 
       ioRequest.close().then((ioResponse) {
         final sb = StringBuffer();
