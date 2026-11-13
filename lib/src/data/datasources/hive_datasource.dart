@@ -93,7 +93,12 @@ class HiveApiLogDataSource implements ApiLogLocalDataSource {
 
       if (params.searchQuery != null && params.searchQuery!.isNotEmpty) {
         final q = params.searchQuery!.toLowerCase();
-        all = all.where((m) => m.url.toLowerCase().contains(q)).toList();
+        all = all
+            .where((m) =>
+                m.url.toLowerCase().contains(q) ||
+                m.method == q ||
+                (m.statusCode?.toString() == q))
+            .toList();
       }
 
       if (params.methodFilter != MethodFilter.all) {
@@ -142,10 +147,14 @@ class HiveApiLogDataSource implements ApiLogLocalDataSource {
   @override
   Future<ApiLogHiveModel?> getLogById(String id) async {
     try {
-      return _box.values.cast<ApiLogHiveModel?>().firstWhere(
-            (m) => m?.id == id,
-            orElse: () => null,
-          );
+      // Logs are keyed by id, so this is an O(1) lookup. The scan is only a
+      // fallback for records whose key and id ever diverged.
+      final direct = _box.get(id);
+      if (direct != null) return direct;
+      for (final m in _box.values) {
+        if (m.id == id) return m;
+      }
+      return null;
     } catch (e) {
       throw StorageException('Failed to get log: $e');
     }
@@ -165,7 +174,10 @@ class HiveApiLogDataSource implements ApiLogLocalDataSource {
   @override
   Future<void> updateLog(ApiLogHiveModel model) async {
     try {
+      final previous = _box.get(model.id);
       await _box.put(model.id, model);
+      _approxBytes +=
+          model.approximateSizeBytes - (previous?.approximateSizeBytes ?? 0);
     } catch (e) {
       throw StorageException('Failed to update log: $e');
     }
@@ -174,7 +186,12 @@ class HiveApiLogDataSource implements ApiLogLocalDataSource {
   @override
   Future<void> deleteLog(String id) async {
     try {
+      final existing = _box.get(id);
       await _box.delete(id);
+      if (existing != null) {
+        _approxBytes -= existing.approximateSizeBytes;
+        if (_approxBytes < 0) _approxBytes = 0;
+      }
     } catch (e) {
       throw StorageException('Failed to delete log: $e');
     }

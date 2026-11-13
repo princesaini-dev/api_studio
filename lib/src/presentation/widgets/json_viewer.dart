@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/utils/json_formatter.dart';
@@ -15,21 +16,56 @@ class JsonViewer extends StatefulWidget {
   State<JsonViewer> createState() => _JsonViewerState();
 }
 
+/// Bodies above this size are formatted on a background isolate so opening
+/// a large response never blocks the UI thread.
+const int _isolateThreshold = 32 * 1024;
+
+/// Maximum characters laid out at once. Laying out a multi-megabyte
+/// [SelectableText] takes seconds and a lot of memory, so larger bodies
+/// show a preview with an explicit "show all" action (Copy always copies
+/// the full body).
+const int _previewChars = 64 * 1024;
+
+({bool isValid, String formatted}) _format(String? raw) =>
+    JsonFormatter.format(raw);
+
 class _JsonViewerState extends State<JsonViewer> {
-  late final String _formatted;
-  late final bool _isJson;
+  String _formatted = '';
+  bool _isJson = false;
+  bool _ready = false;
+  bool _showAll = false;
   bool _copied = false;
 
   @override
   void initState() {
     super.initState();
-    final result = JsonFormatter.format(widget.raw);
-    _isJson = result.isValid;
-    _formatted = result.formatted;
+    final raw = widget.raw;
+    if (raw == null || raw.length < _isolateThreshold) {
+      _apply(JsonFormatter.format(raw));
+    } else {
+      compute(_format, raw).then((r) {
+        if (mounted) setState(() => _apply(r));
+      }, onError: (Object _) {
+        if (mounted) {
+          setState(() => _apply((isValid: false, formatted: raw)));
+        }
+      });
+    }
   }
 
+  void _apply(({bool isValid, String formatted}) r) {
+    _isJson = r.isValid;
+    _formatted = r.formatted;
+    _ready = true;
+  }
+
+  bool get _isClipped => !_showAll && _formatted.length > _previewChars;
+
+  String get _visibleText =>
+      _isClipped ? _formatted.substring(0, _previewChars) : _formatted;
+
   void _copy() async {
-    if (_formatted.isEmpty) return;
+    if (!_ready || _formatted.isEmpty) return;
     await Clipboard.setData(ClipboardData(text: _formatted));
     if (mounted) {
       setState(() => _copied = true);
@@ -76,16 +112,42 @@ class _JsonViewerState extends State<JsonViewer> {
       padding: const EdgeInsets.all(Dimensions.md),
       child: Stack(
         children: [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: SelectableText(
-              _formatted,
-              style: AppTextStyles.mono.copyWith(
-                color: theme.textPrimaryColor,
-                height: 1.65,
+          if (!_ready)
+            const Padding(
+              padding: EdgeInsets.all(Dimensions.lg),
+              child: Center(
+                child: SizedBox.square(
+                  dimension: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
               ),
+            )
+          else
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SelectableText(
+                    _visibleText,
+                    style: AppTextStyles.mono.copyWith(
+                      color: theme.textPrimaryColor,
+                      height: 1.65,
+                    ),
+                  ),
+                ),
+                if (_isClipped)
+                  TextButton.icon(
+                    onPressed: () => setState(() => _showAll = true),
+                    icon: const Icon(Icons.unfold_more_rounded, size: 16),
+                    label: Text(
+                      'Showing ${_previewChars ~/ 1024} KB of '
+                      '${(_formatted.length / 1024).toStringAsFixed(0)} KB '
+                      '· Show all',
+                    ),
+                  ),
+              ],
             ),
-          ),
           Positioned(
             top: 0,
             right: 0,

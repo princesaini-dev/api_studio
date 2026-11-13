@@ -138,6 +138,41 @@ void main() {
     expect(stored.status, LogStatus.cancelled);
   });
 
+  test('network failures upload with integer status/duration and real time',
+      () async {
+    network.requests.clear();
+    final at = DateTime.utc(2026, 1, 2, 3, 4, 5);
+    await ApiStudio.log(
+      url: 'https://api.example.com/offline',
+      method: 'GET',
+      errorMessage: 'SocketException: offline',
+      timestamp: at,
+    );
+    await ApiStudio.flush();
+    final payload = network.requests.single.body! as Map<String, dynamic>;
+    expect(payload['status_code'], 0);
+    expect(payload['duration_ms'], 0);
+    expect(payload['error'], 'SocketException: offline');
+    expect(payload['timestamp'], at.toIso8601String());
+  });
+
+  test('401/429 from the backend keeps the queue for a later retry', () async {
+    final rejecting = RecordingSimpleHttpClient(statusCode: 401);
+    ApiStudioRemoteLogger.debugOverride(client: rejecting);
+    await ApiStudio.log(
+        url: 'https://api.example.com/a', method: 'GET', statusCode: 500);
+    await ApiStudio.log(
+        url: 'https://api.example.com/b', method: 'GET', statusCode: 500);
+    await ApiStudio.flush();
+    expect(ApiStudioRemoteLogger.pendingPayloadCount, 2);
+
+    network.requests.clear();
+    ApiStudioRemoteLogger.debugOverride(client: network);
+    await ApiStudio.flush();
+    expect(ApiStudioRemoteLogger.pendingPayloadCount, 0);
+    expect(network.requests, hasLength(2));
+  });
+
   test('remote upload failures never throw into the host app', () async {
     ApiStudioRemoteLogger.debugOverride(client: _ThrowingClient());
     await expectLater(

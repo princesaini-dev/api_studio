@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../../core/errors/exceptions.dart';
 import '../../core/errors/failures.dart';
 import '../../domain/entities/api_log_entity.dart';
@@ -73,11 +75,44 @@ class ApiLogRepositoryImpl implements ApiLogRepository {
     return dataSource.getTotalCount();
   }
 
+  /// Emits the newest page of logs after storage changes.
+  ///
+  /// Bursts of writes (e.g. 30 parallel requests finishing together) are
+  /// coalesced into a single query instead of re-reading and re-sorting the
+  /// whole box once per write.
   @override
   Stream<List<ApiLogEntity>> watchLogs() {
-    return dataSource.watchBox().asyncMap((_) async {
-      final models = await dataSource.getLogs(const GetLogsParams());
-      return models.map((m) => m.toEntity()).toList();
-    });
+    late StreamController<List<ApiLogEntity>> controller;
+    StreamSubscription<dynamic>? sub;
+    Timer? pending;
+
+    Future<void> emit() async {
+      pending = null;
+      try {
+        final models = await dataSource.getLogs(const GetLogsParams());
+        if (!controller.isClosed) {
+          controller.add(models.map((m) => m.toEntity()).toList());
+        }
+      } catch (_) {}
+    }
+
+    controller = StreamController<List<ApiLogEntity>>(
+      onListen: () {
+        sub = dataSource.watchBox().listen((_) {
+          pending ??= Timer(watchCoalesceWindow, () => unawaited(emit()));
+        });
+      },
+      onPause: () => sub?.pause(),
+      onResume: () => sub?.resume(),
+      onCancel: () async {
+        pending?.cancel();
+        await sub?.cancel();
+        await controller.close();
+      },
+    );
+    return controller.stream;
   }
+
+  /// Window in which consecutive storage events are merged by [watchLogs].
+  static const Duration watchCoalesceWindow = Duration(milliseconds: 100);
 }

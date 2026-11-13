@@ -448,7 +448,10 @@ class PerformanceMonitor {
       _framesInInterval = 0;
     }
 
-    _controller.add(_buildSnapshot());
+    // Aggregates above are always kept up to date (the uploader and
+    // currentSnapshot read them); building and emitting a full snapshot is
+    // only worth it while the inspector UI is listening.
+    if (_controller.hasListener) _controller.add(_buildSnapshot());
   }
 
   PerformanceSnapshot _buildSnapshot() {

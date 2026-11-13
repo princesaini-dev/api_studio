@@ -77,8 +77,12 @@ class ApiStudioRemoteLogger {
       final payload = jsonEncode({
         'method': log.methodLabel,
         'url': log.url,
-        'status_code': log.statusCode,
-        'duration_ms': log.durationMs,
+        // The backend requires integers here. Network failures, timeouts
+        // and cancellations have no status code, and are exactly the logs
+        // users most need to see, so send 0 instead of null (a null would
+        // be rejected with 422 and silently discarded below).
+        'status_code': log.statusCode ?? 0,
+        'duration_ms': log.durationMs ?? 0,
         'request': {
           'headers': log.requestHeaders,
           'body': _safeBody(log.requestBody ??
@@ -89,7 +93,7 @@ class ApiStudioRemoteLogger {
           'body': _safeBody(log.responseBody),
         },
         'error': log.errorMessage,
-        'timestamp': DateTime.now().toUtc().toIso8601String(),
+        'timestamp': log.timestamp.toUtc().toIso8601String(),
       });
 
       _pendingPayloads.add(payload);
@@ -145,15 +149,21 @@ class ApiStudioRemoteLogger {
           timeout: _timeout,
         );
 
-        if (response.statusCode >= 200 && response.statusCode < 300) {
+        final code = response.statusCode;
+        if (code >= 200 && code < 300) {
           _pendingPayloads.removeAt(0);
-          debugPrint('API Studio: API logs uploaded successfully.');
-        } else if (response.statusCode >= 400 && response.statusCode < 500) {
+        } else if (code == 401 || code == 403 || code == 408 || code == 429) {
+          // Invalid/revoked key, timeout or rate limit: the payload itself
+          // is fine, so keep the queue and retry on the next interval
+          // instead of discarding every pending log one by one.
+          debugPrint('API Studio: Log upload paused (status $code).');
+          return;
+        } else if (code >= 400 && code < 500) {
           // Client rejection (e.g. malformed or invalid schema) — discard
           // poison pill so the rest of the queue continues to upload.
           _pendingPayloads.removeAt(0);
           debugPrint(
-            'API Studio: Discarded rejected log payload (status ${response.statusCode}).',
+            'API Studio: Discarded rejected log payload (status $code).',
           );
         } else {
           // 5xx server error: pause and retry on the next interval.

@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import '../domain/entities/api_log_entity.dart';
 import '../domain/repositories/api_log_repository.dart';
 
 class FailedApiCountService {
@@ -12,9 +11,10 @@ class FailedApiCountService {
 
   final StreamController<int> _controller = StreamController<int>.broadcast();
 
-  StreamSubscription<List<ApiLogEntity>>? _subscription;
+  StreamSubscription<dynamic>? _subscription;
   bool _started = false;
   int _lastCount = 0;
+  bool _hasEmitted = false;
 
   int get failedApiCount => _lastCount;
 
@@ -24,22 +24,24 @@ class FailedApiCountService {
     if (_started) return;
     _started = true;
     _emitCurrent(repository);
+    // watchLogs() only carries the newest page, so use it as a change
+    // signal and recount across all stored logs.
     _subscription = repository.watchLogs().listen(
-      (logs) {
-        final failedCount =
-            logs.where((log) => log.status == LogStatus.error).length;
-        _lastCount = failedCount;
-        if (!_controller.isClosed) _controller.add(_lastCount);
-      },
-    );
+          (_) => unawaited(_emitCurrent(repository)),
+        );
   }
 
   Future<void> _emitCurrent(ApiLogRepository repository) async {
-    final logs = await repository.getLogs(
-      const GetLogsParams(pageSize: 99999, statusFilter: StatusFilter.error),
-    );
-    _lastCount = logs.length;
-    if (!_controller.isClosed) _controller.add(_lastCount);
+    try {
+      final logs = await repository.getLogs(
+        const GetLogsParams(
+            pageSize: 1 << 30, statusFilter: StatusFilter.error),
+      );
+      if (logs.length == _lastCount && _hasEmitted) return;
+      _hasEmitted = true;
+      _lastCount = logs.length;
+      if (!_controller.isClosed) _controller.add(_lastCount);
+    } catch (_) {}
   }
 
   void dispose() {
