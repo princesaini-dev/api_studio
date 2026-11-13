@@ -46,6 +46,8 @@ class InspectorListController extends ChangeNotifier {
       methodFilter: s.methodFilter,
       statusFilter: s.statusFilter,
       sortOrder: s.sortOrder,
+      // The list only shows metadata; bodies load when a log is opened.
+      includeBodies: false,
     );
   }
 

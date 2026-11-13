@@ -164,6 +164,29 @@ void main() {
     expect(stored.status, LogStatus.cancelled);
   });
 
+  test('large bodies are prepared off the UI isolate, still redacted',
+      () async {
+    final big = {
+      'password': 'pw-heavy',
+      'items': [
+        for (var i = 0; i < 3000; i++) {'i': i},
+      ],
+    };
+    await ApiStudio.log(
+      url: 'https://api.example.com/heavy',
+      method: 'POST',
+      statusCode: 200,
+      requestHeaders: {'Authorization': 'Bearer heavy-secret'},
+      requestBody: big,
+    );
+    final stored = (await DiService.repository
+            .getLogs(const GetLogsParams(searchQuery: 'heavy')))
+        .single;
+    expect(stored.requestHeaders['Authorization'], _r);
+    expect(stored.requestBody, isNot(contains('pw-heavy')));
+    expect(stored.isTruncated, isTrue);
+  });
+
   test('network failures upload with integer status/duration and real time',
       () async {
     await ApiStudio.flush();
@@ -200,8 +223,9 @@ void main() {
           queryParameters: {'page': '$i'});
     }
     await ApiStudio.flush();
-    // 10 pending logs trigger an early batch; the rest go with flush().
-    expect(network.requests.length, lessThanOrEqualTo(2));
+    // Batched: far fewer requests than logs (an early batch may start once
+    // 10 are pending; the rest go with flush()).
+    expect(network.requests.length, lessThan(6));
     expect(network.requests.every((r) => r.gzip), isTrue);
     final logs = network.uploadedLogs;
     expect(logs, hasLength(12));

@@ -15,12 +15,23 @@ abstract class ApiLogLocalDataSource {
   Future<int> getTotalCount();
   Stream<BoxEvent> watchBox();
 
+  /// Loads the bodies of log [id]. Models returned by [getLogs] and
+  /// [getLogById] carry no bodies when a body box is in use.
+  Future<({String? request, String? response})> loadBodies(String id);
+
+  /// Whether bodies live outside the models (see [loadBodies]).
+  bool get storesBodiesSeparately;
+
   /// Applies the retention policy. Returns the number of logs removed.
   Future<int> prune();
 }
 
 class HiveApiLogDataSource implements ApiLogLocalDataSource {
   final Box<ApiLogHiveModel> _box;
+
+  /// Bodies, keyed `<id>/q` (request) and `<id>/s` (response). `null`
+  /// keeps bodies inline in [_box] (used by tests and as a fallback).
+  final LazyBox<String>? _bodies;
 
   /// Maximum number of logs kept. Oldest logs are removed first.
   final int maxStoredLogs;
@@ -41,17 +52,76 @@ class HiveApiLogDataSource implements ApiLogLocalDataSource {
 
   HiveApiLogDataSource(
     this._box, {
+    LazyBox<String>? bodies,
     this.maxStoredLogs = AppConstants.maxStoredLogs,
     this.retention = AppConstants.logRetention,
     this.maxStorageBytes = AppConstants.maxStorageBytes,
     DateTime Function()? clock,
-  }) : _clock = clock ?? DateTime.now {
+  })  : _bodies = bodies,
+        _clock = clock ?? DateTime.now {
     _approxBytes = _box.values.fold(0, (s, m) => s + m.approximateSizeBytes);
   }
 
-  /// Opens (and migrates, if needed) the log box.
-  static Future<Box<ApiLogHiveModel>> openBox() =>
-      LogStorageMigrator.openLogsBox();
+  /// Opens (and migrates, if needed) the log box and the body box.
+  static Future<({Box<ApiLogHiveModel> logs, LazyBox<String>? bodies})>
+      openBoxes() => LogStorageMigrator.openLogsBoxes();
+
+  static String requestBodyKey(String id) => '$id/q';
+  static String responseBodyKey(String id) => '$id/s';
+
+  @override
+  bool get storesBodiesSeparately => _bodies != null;
+
+  @override
+  Future<({String? request, String? response})> loadBodies(String id) async {
+    final bodies = _bodies;
+    if (bodies == null) {
+      final m = _box.get(id);
+      return (request: m?.requestBody, response: m?.responseBody);
+    }
+    try {
+      return (
+        request: await bodies.get(requestBodyKey(id)),
+        response: await bodies.get(responseBodyKey(id)),
+      );
+    } catch (e) {
+      throw StorageException('Failed to load log bodies: $e');
+    }
+  }
+
+  Future<void> _deleteBodies(Iterable<String> ids) async {
+    final bodies = _bodies;
+    if (bodies == null || ids.isEmpty) return;
+    await bodies.deleteAll([
+      for (final id in ids) ...[requestBodyKey(id), responseBodyKey(id)],
+    ]);
+  }
+
+  /// Moves the bodies of [model] into the body box (if any) and returns the
+  /// model that should be stored in the main box.
+  Future<ApiLogHiveModel> _externalize(ApiLogHiveModel model) async {
+    final bodies = _bodies;
+    if (bodies == null) return model;
+    final req = model.requestBody;
+    final res = model.responseBody;
+    final reqKey = requestBodyKey(model.id);
+    final resKey = responseBodyKey(model.id);
+    if (req != null) {
+      await bodies.put(reqKey, req);
+    } else {
+      await bodies.delete(reqKey);
+    }
+    if (res != null) {
+      await bodies.put(resKey, res);
+    } else {
+      await bodies.delete(resKey);
+    }
+    return model
+      ..requestBodyLength = req?.length
+      ..responseBodyLength = res?.length
+      ..requestBody = null
+      ..responseBody = null;
+  }
 
   @override
   Future<int> prune() async {
@@ -62,6 +132,7 @@ class HiveApiLogDataSource implements ApiLogLocalDataSource {
     var bytes = models.fold<int>(0, (s, m) => s + m.approximateSizeBytes);
     final now = _clock();
     final keys = <dynamic>[];
+    final ids = <String>[];
     for (final m in models) {
       final expired =
           retention > Duration.zero && now.difference(m.timestamp) > retention;
@@ -69,10 +140,14 @@ class HiveApiLogDataSource implements ApiLogLocalDataSource {
         break;
       }
       keys.add(m.key);
+      ids.add(m.id);
       remaining--;
       bytes -= m.approximateSizeBytes;
     }
-    if (keys.isNotEmpty) await _box.deleteAll(keys);
+    if (keys.isNotEmpty) {
+      await _box.deleteAll(keys);
+      await _deleteBodies(ids);
+    }
     _approxBytes = bytes;
     return keys.length;
   }
@@ -163,6 +238,7 @@ class HiveApiLogDataSource implements ApiLogLocalDataSource {
   @override
   Future<void> saveLog(ApiLogHiveModel model) async {
     try {
+      model = await _externalize(model);
       await _box.put(model.id, model);
       _approxBytes += model.approximateSizeBytes;
       if (_needsPrune) await prune();
@@ -175,6 +251,7 @@ class HiveApiLogDataSource implements ApiLogLocalDataSource {
   Future<void> updateLog(ApiLogHiveModel model) async {
     try {
       final previous = _box.get(model.id);
+      model = await _externalize(model);
       await _box.put(model.id, model);
       _approxBytes +=
           model.approximateSizeBytes - (previous?.approximateSizeBytes ?? 0);
@@ -188,6 +265,7 @@ class HiveApiLogDataSource implements ApiLogLocalDataSource {
     try {
       final existing = _box.get(id);
       await _box.delete(id);
+      await _deleteBodies([id]);
       if (existing != null) {
         _approxBytes -= existing.approximateSizeBytes;
         if (_approxBytes < 0) _approxBytes = 0;
@@ -201,6 +279,7 @@ class HiveApiLogDataSource implements ApiLogLocalDataSource {
   Future<void> clearAllLogs() async {
     try {
       await _box.clear();
+      await _bodies?.clear();
       _approxBytes = 0;
     } catch (e) {
       throw StorageException('Failed to clear logs: $e');

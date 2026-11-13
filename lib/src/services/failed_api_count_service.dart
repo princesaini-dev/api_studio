@@ -35,7 +35,9 @@ class FailedApiCountService {
     try {
       final logs = await repository.getLogs(
         const GetLogsParams(
-            pageSize: 1 << 30, statusFilter: StatusFilter.error),
+            pageSize: 1 << 30,
+            statusFilter: StatusFilter.error,
+            includeBodies: false),
       );
       if (logs.length == _lastCount && _hasEmitted) return;
       _hasEmitted = true;

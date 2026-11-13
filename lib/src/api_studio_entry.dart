@@ -565,26 +565,51 @@ class ApiStudio {
   }) async {
     if (!isEnabled) return;
     try {
-      final entity = LogEntryBuilder.build(
-        url: url,
-        method: method,
-        statusCode: statusCode,
-        durationMs: durationMs,
-        requestHeaders: requestHeaders,
-        queryParameters: queryParameters,
-        requestBody: requestBody,
-        responseHeaders: responseHeaders,
-        responseBody: responseBody,
-        formData: formData,
-        isMultipart: isMultipart,
-        cancelled: cancelled,
-        errorMessage: errorMessage,
-        stackTrace: stackTrace,
-        timestamp: timestamp,
-        requestSizeBytes: requestSizeBytes,
-        responseSizeBytes: responseSizeBytes,
-      );
-      await LogPipeline.record(entity);
+      ApiLogEntity build() => LogEntryBuilder.build(
+            url: url,
+            method: method,
+            statusCode: statusCode,
+            durationMs: durationMs,
+            requestHeaders: requestHeaders,
+            queryParameters: queryParameters,
+            requestBody: requestBody,
+            responseHeaders: responseHeaders,
+            responseBody: responseBody,
+            formData: formData,
+            isMultipart: isMultipart,
+            cancelled: cancelled,
+            errorMessage: errorMessage,
+            stackTrace: stackTrace?.toString(),
+            timestamp: timestamp ?? DateTime.now(),
+            requestSizeBytes: requestSizeBytes,
+            responseSizeBytes: responseSizeBytes,
+          );
+
+      // Encoding, redacting and truncating a large body can take tens of
+      // milliseconds; do it on a background isolate so capturing never
+      // drops frames in the host app.
+      if (!kIsWeb &&
+          (LogEntryBuilder.isHeavy(requestBody) ||
+              LogEntryBuilder.isHeavy(responseBody))) {
+        final redactor = ApiStudioRuntime.redactor;
+        final maxBytes = ApiStudioRuntime.maxBodyBytes;
+        ApiLogEntity? prepared;
+        try {
+          prepared = await compute(
+            (_) => LogPipeline.prepareWith(build(), redactor, maxBytes),
+            null,
+            debugLabel: 'ApiStudio.log',
+          );
+        } catch (_) {
+          // E.g. a custom redactor that cannot be sent to another isolate:
+          // fall back to the synchronous path below.
+        }
+        if (prepared != null) {
+          await LogPipeline.record(prepared, prepared: true);
+          return;
+        }
+      }
+      await LogPipeline.record(build());
     } catch (_) {
       // Logging must never throw into the host app.
     }

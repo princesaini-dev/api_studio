@@ -49,6 +49,29 @@ class LogEntryBuilder {
     }
   }
 
+  /// Whether encoding + redacting [data] is expensive enough to move off
+  /// the UI isolate: strings over 32 K characters, or JSON trees with more
+  /// than ~2000 nodes. The walk stops as soon as the limit is reached.
+  static bool isHeavy(dynamic data) {
+    if (data == null || data is List<int>) return false;
+    if (data is String) return data.length > 32 * 1024;
+    if (data is! Map && data is! List) return false;
+    var budget = 2000;
+    final stack = <Object?>[data];
+    while (stack.isNotEmpty) {
+      final v = stack.removeLast();
+      if (--budget <= 0) return true;
+      if (v is Map) {
+        stack.addAll(v.values);
+      } else if (v is List) {
+        stack.addAll(v);
+      } else if (v is String && v.length > 32 * 1024) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   static int? sizeOf(dynamic data, String? encoded) {
     if (data is List<int>) return data.length;
     return encoded == null ? null : utf8.encode(encoded).length;

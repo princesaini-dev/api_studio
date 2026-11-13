@@ -14,6 +14,10 @@ class GetLogsParams {
   final StatusFilter statusFilter;
   final SortOrder sortOrder;
 
+  /// Whether request/response bodies are loaded. Lists don't need them;
+  /// leave `true` (the default) when you read or export bodies.
+  final bool includeBodies;
+
   const GetLogsParams({
     this.page = 0,
     this.pageSize = 20,
@@ -21,6 +25,7 @@ class GetLogsParams {
     this.methodFilter = MethodFilter.all,
     this.statusFilter = StatusFilter.all,
     this.sortOrder = SortOrder.newest,
+    this.includeBodies = true,
   });
 }
 

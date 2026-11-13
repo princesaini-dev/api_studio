@@ -3,6 +3,11 @@ class HiveConstants {
   HiveConstants._();
 
   static const String apiLogBoxName = 'api_studio_logs';
+
+  /// Lazy box holding request/response bodies (schema 3+). Bodies are only
+  /// read from disk when a log is opened or exported, so hundreds of large
+  /// responses no longer sit in the host app's memory.
+  static const String apiLogBodiesBoxName = 'api_studio_log_bodies';
   static const int apiLogTypeId = 0;
   static const String hiveSubDir = 'api_studio';
 

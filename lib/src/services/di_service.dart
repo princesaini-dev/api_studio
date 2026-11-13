@@ -80,9 +80,10 @@ class DiService {
     }
 
     ApiStudioHive.registerAdapters();
-    final box = await HiveApiLogDataSource.openBox();
+    final boxes = await HiveApiLogDataSource.openBoxes();
     final dataSource = HiveApiLogDataSource(
-      box,
+      boxes.logs,
+      bodies: boxes.bodies,
       maxStoredLogs: _maxStoredLogs,
       retention: _logRetention,
     );

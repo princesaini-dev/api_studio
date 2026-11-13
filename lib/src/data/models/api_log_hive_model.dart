@@ -6,7 +6,8 @@ import '../../domain/entities/api_log_entity.dart';
 ///
 /// The binary layout (type id 0, fields 0–19) is unchanged from API Studio
 /// 1.0.x so existing boxes remain readable after the `hive` → `hive_ce`
-/// migration. Field 20 (`isTruncated`) was added in 1.1.0.
+/// migration. Field 20 (`isTruncated`) was added in 1.1.0; fields 21–22
+/// (body lengths) in 1.2.0, when bodies moved to a separate lazy box.
 class ApiLogHiveModel extends HiveObject {
   late String id;
   late String url;
@@ -29,6 +30,11 @@ class ApiLogHiveModel extends HiveObject {
   late bool isEdited;
   String? parentId;
   bool isTruncated = false;
+
+  /// Lengths of the bodies when they are kept in the separate lazy body box
+  /// (schema 3+), so size accounting works without loading them.
+  int? requestBodyLength;
+  int? responseBodyLength;
 
   ApiLogHiveModel();
 
@@ -59,8 +65,8 @@ class ApiLogHiveModel extends HiveObject {
 
   /// Approximate number of bytes this log's variable-size fields occupy.
   int get approximateSizeBytes =>
-      (requestBody?.length ?? 0) +
-      (responseBody?.length ?? 0) +
+      (requestBody?.length ?? requestBodyLength ?? 0) +
+      (responseBody?.length ?? responseBodyLength ?? 0) +
       (stackTrace?.length ?? 0) +
       url.length;
 
@@ -106,7 +112,7 @@ class ApiLogHiveModelAdapter extends TypeAdapter<ApiLogHiveModel> {
   @override
   final int typeId = HiveConstants.apiLogTypeId;
 
-  static const int _fieldCount = 21;
+  static const int _fieldCount = 23;
 
   @override
   ApiLogHiveModel read(BinaryReader reader) {
@@ -137,7 +143,9 @@ class ApiLogHiveModelAdapter extends TypeAdapter<ApiLogHiveModel> {
       ..status = _str(f[17]) ?? LogStatus.error.name
       ..isEdited = f[18] is bool ? f[18] as bool : false
       ..parentId = _str(f[19])
-      ..isTruncated = f[20] is bool ? f[20] as bool : false;
+      ..isTruncated = f[20] is bool ? f[20] as bool : false
+      ..requestBodyLength = f[21] is int ? f[21] as int : null
+      ..responseBodyLength = f[22] is int ? f[22] as int : null;
   }
 
   @override
@@ -185,7 +193,11 @@ class ApiLogHiveModelAdapter extends TypeAdapter<ApiLogHiveModel> {
       ..writeByte(19)
       ..write(obj.parentId)
       ..writeByte(20)
-      ..write(obj.isTruncated);
+      ..write(obj.isTruncated)
+      ..writeByte(21)
+      ..write(obj.requestBodyLength)
+      ..writeByte(22)
+      ..write(obj.responseBodyLength);
   }
 
   static String? _str(dynamic v) => v is String ? v : v?.toString();

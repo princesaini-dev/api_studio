@@ -7,6 +7,7 @@ import '../../api_client/core/api_studio_remote_logger.dart';
 import '../../domain/entities/api_log_entity.dart';
 import '../../domain/repositories/api_log_repository.dart';
 import '../../notification/services/notification_service.dart';
+import '../redaction/redactor.dart';
 import '../runtime/api_studio_runtime.dart';
 
 /// The single path every captured request goes through — `ApiStudio.log`,
@@ -31,9 +32,14 @@ class LogPipeline {
   static const String truncationMarker = '…[truncated by API Studio';
 
   /// Redacts and truncates [raw] according to [ApiStudioRuntime].
-  static ApiLogEntity prepare(ApiLogEntity raw) {
-    final redacted = ApiStudioRuntime.redactor.redact(raw);
-    final max = ApiStudioRuntime.maxBodyBytes;
+  static ApiLogEntity prepare(ApiLogEntity raw) => prepareWith(
+      raw, ApiStudioRuntime.redactor, ApiStudioRuntime.maxBodyBytes);
+
+  /// [prepare] with explicit settings, so it can run on another isolate
+  /// (where [ApiStudioRuntime]'s static state is not shared).
+  static ApiLogEntity prepareWith(
+      ApiLogEntity raw, Redactor redactor, int max) {
+    final redacted = redactor.redact(raw);
     final req = truncate(redacted.requestBody, max);
     final res = truncate(redacted.responseBody, max);
     if (!req.truncated && !res.truncated) return redacted;
@@ -63,6 +69,9 @@ class LogPipeline {
 
   /// Records a captured request. Never throws.
   ///
+  /// Pass [prepared] when [raw] already went through [prepareWith] with the
+  /// current runtime settings (see `ApiStudio.log`'s background path).
+  ///
   /// Returns the stored (redacted) entity, or `null` when API Studio is
   /// disabled or the log could not be prepared.
   static Future<ApiLogEntity?> record(
@@ -71,12 +80,13 @@ class LogPipeline {
     bool upload = true,
     ApiLogRepository? repository,
     NotificationService? notificationService,
+    bool prepared = false,
   }) async {
     if (!ApiStudioRuntime.enabled) return null;
 
     final ApiLogEntity entity;
     try {
-      entity = prepare(raw);
+      entity = prepared ? raw : prepare(raw);
     } catch (e) {
       // If we cannot redact, we do not record at all.
       debugPrint('[ApiStudio] Dropped a log that could not be redacted: $e');

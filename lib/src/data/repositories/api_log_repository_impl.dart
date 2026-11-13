@@ -16,7 +16,11 @@ class ApiLogRepositoryImpl implements ApiLogRepository {
   Future<List<ApiLogEntity>> getLogs(GetLogsParams params) async {
     try {
       final models = await dataSource.getLogs(params);
-      return models.map((m) => m.toEntity()).toList();
+      final entities = models.map((m) => m.toEntity()).toList();
+      if (!params.includeBodies || !dataSource.storesBodiesSeparately) {
+        return entities;
+      }
+      return [for (final e in entities) await _withBodies(e)];
     } on StorageException catch (e) {
       throw StorageFailure(e.message);
     }
@@ -26,10 +30,22 @@ class ApiLogRepositoryImpl implements ApiLogRepository {
   Future<ApiLogEntity?> getLogById(String id) async {
     try {
       final model = await dataSource.getLogById(id);
-      return model?.toEntity();
+      if (model == null) return null;
+      final entity = model.toEntity();
+      return dataSource.storesBodiesSeparately
+          ? await _withBodies(entity)
+          : entity;
     } on StorageException catch (e) {
       throw StorageFailure(e.message);
     }
+  }
+
+  Future<ApiLogEntity> _withBodies(ApiLogEntity entity) async {
+    final bodies = await dataSource.loadBodies(entity.id);
+    return entity.copyWith(
+      requestBody: bodies.request,
+      responseBody: bodies.response,
+    );
   }
 
   @override
@@ -89,7 +105,8 @@ class ApiLogRepositoryImpl implements ApiLogRepository {
     Future<void> emit() async {
       pending = null;
       try {
-        final models = await dataSource.getLogs(const GetLogsParams());
+        final models =
+            await dataSource.getLogs(const GetLogsParams(includeBodies: false));
         if (!controller.isClosed) {
           controller.add(models.map((m) => m.toEntity()).toList());
         }
