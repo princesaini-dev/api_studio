@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3.0
+
+### ✨ Added
+- **Crash reporting** (opt-in): `ApiStudio.initialize(enableCrashReporting: true)` reports uncaught Flutter and Dart errors to the portal's new **Issues** page, where they are grouped by stack trace with event and affected-user counts. Your existing `FlutterError.onError` / `PlatformDispatcher.onError` handlers are still called. Requires an `apiKey`.
+- Each crash carries **breadcrumbs**: the API calls (method, URL without query string, status, duration) and, with `ApiStudioNavigatorObserver`, the screens that led up to it.
+- `ApiStudio.captureException(error, stackTrace: ..., tags: ..., extra: ..., fingerprint: ...)` for errors you catch yourself, and `ApiStudio.addBreadcrumb(...)` for your own notes.
+- Crash reports are queued on disk and sent on the next launch if the app dies first. The same error is sent at most 3 times per launch.
+- Pair it with **alert rules** in the portal (new issue, regression, crash spike, API failure spike → Slack, Discord or a webhook).
+
 ## 1.2.0
 
 ### ⚠️ Behavior changes

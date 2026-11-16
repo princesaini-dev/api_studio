@@ -11,6 +11,8 @@ import 'core/pipeline/log_pipeline.dart';
 import 'core/redaction/redaction_config.dart';
 import 'core/runtime/api_studio_feature.dart';
 import 'core/runtime/api_studio_runtime.dart';
+import 'crash/crash_breadcrumbs.dart';
+import 'crash/crash_reporter.dart';
 import 'domain/entities/api_log_entity.dart';
 import 'domain/entities/performance_snapshot.dart';
 import 'notification/config/notification_config.dart';
@@ -130,6 +132,14 @@ class ApiStudio {
   /// aggregated telemetry upload (at most once per interval, requires
   /// [apiKey]). Defaults to `false`.
   ///
+  /// [enableCrashReporting] reports uncaught Flutter and Dart errors to the
+  /// portal's Issues page, grouped by stack trace, with the API calls and
+  /// screens that led up to them (requires [apiKey]). Defaults to `false`.
+  /// Existing `FlutterError.onError` / `PlatformDispatcher.onError`
+  /// handlers keep working: API Studio calls them after recording the error.
+  /// Add [ApiStudioNavigatorObserver] to your app's `navigatorObservers`
+  /// to include screen changes.
+  ///
   /// [navigatorKey] lets [open] and [showFloatingButton] work without a
   /// [BuildContext].
   ///
@@ -158,6 +168,7 @@ class ApiStudio {
     bool enableConnectivityStream = false,
     bool enableFailedApiStream = false,
     bool enablePerformanceMonitoring = false,
+    bool enableCrashReporting = false,
     NotificationConfig? notificationConfig,
     Duration clientTimeout = const Duration(seconds: 30),
     Map<String, String> clientDefaultHeaders = const {},
@@ -206,6 +217,16 @@ class ApiStudio {
     }
 
     try {
+      // Installed before storage so errors thrown during startup are kept.
+      ApiStudioCrashReporter.configure(
+        apiKey: effectiveApiKey,
+        enabled: enableCrashReporting,
+      );
+    } catch (_) {
+      // Never let crash reporting setup affect app startup.
+    }
+
+    try {
       await DiService.init(
         maxStoredLogs: maxStoredLogs,
         logRetention: logRetention,
@@ -222,6 +243,10 @@ class ApiStudio {
     if (effectiveApiKey != null) {
       // Pending cloud uploads survive restarts once the queue is on disk.
       await ApiStudioRemoteLogger.attachPersistentQueue();
+      if (enableCrashReporting) {
+        // Sends crashes saved before the previous launch was killed.
+        await ApiStudioCrashReporter.attachPersistentQueue();
+      }
     }
 
     _initClient(
@@ -283,6 +308,7 @@ class ApiStudio {
     ApiStudioRuntime.enabled = false;
     try {
       ApiStudioRemoteLogger.configure(null);
+      ApiStudioCrashReporter.configure(apiKey: null, enabled: false);
       PerformanceTelemetryUploader.configure(apiKey: null, enabled: false);
       if (PerformanceMonitor.instance.isMonitoring) {
         PerformanceMonitor.instance.stop();
@@ -525,9 +551,52 @@ class ApiStudio {
   /// Immediately flushes all pending remote logs to the API Studio Cloud
   /// portal (`https://apistudio.cloud/`). No-op when disabled or when no
   /// API key is configured.
+  /// Reports an error your app caught itself (e.g. in a `catch` block) to
+  /// the portal's Issues page. Requires `enableCrashReporting: true`.
+  ///
+  /// [tags] are short searchable values (`{'screen': 'checkout'}`), [extra]
+  /// is any JSON-encodable context (sensitive keys are masked by the
+  /// backend). Events with the same [fingerprint] are grouped into one
+  /// issue instead of grouping by stack trace.
+  static void captureException(
+    Object error, {
+    StackTrace? stackTrace,
+    bool fatal = false,
+    Map<String, String>? tags,
+    Map<String, Object?>? extra,
+    List<String>? fingerprint,
+  }) {
+    if (!isEnabled) return;
+    ApiStudioCrashReporter.capture(
+      error,
+      stackTrace ?? StackTrace.current,
+      fatal: fatal,
+      handled: true,
+      tags: tags,
+      extra: extra,
+      fingerprint: fingerprint,
+    );
+  }
+
+  /// Adds a note to the trail attached to the next crash report, e.g.
+  /// `ApiStudio.addBreadcrumb('Tapped Pay', category: 'user')`. API calls
+  /// and (with [ApiStudioNavigatorObserver]) screen changes are recorded
+  /// automatically.
+  static void addBreadcrumb(
+    String message, {
+    String category = 'log',
+    Map<String, Object?>? data,
+  }) {
+    if (!isEnabled) return;
+    CrashBreadcrumbs.add(category: category, message: message, data: data);
+  }
+
   static Future<void> flush() async {
     if (!isEnabled) return;
-    await ApiStudioRemoteLogger.uploadNow();
+    await Future.wait([
+      ApiStudioRemoteLogger.uploadNow(),
+      ApiStudioCrashReporter.upload(),
+    ]);
   }
 
   /// Logs an HTTP request/response into API Studio.

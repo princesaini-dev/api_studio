@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import '../../api_client/core/api_studio_remote_logger.dart';
+import '../../crash/crash_breadcrumbs.dart';
+import '../../crash/crash_reporter.dart';
 import '../../domain/entities/api_log_entity.dart';
 import '../../domain/repositories/api_log_repository.dart';
 import '../../notification/services/notification_service.dart';
@@ -108,6 +110,7 @@ class LogPipeline {
       }
     }
 
+    if (ApiStudioCrashReporter.isEnabled) CrashBreadcrumbs.addApiCall(entity);
     if (upload) ApiStudioRemoteLogger.enqueue(entity);
     return entity;
   }

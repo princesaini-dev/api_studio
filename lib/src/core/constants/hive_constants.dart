@@ -23,4 +23,9 @@ class HiveConstants {
   /// Box holding storage metadata (schema version) used for migrations.
   static const String metaBoxName = 'api_studio_meta';
   static const String schemaVersionKey = 'schemaVersion';
+
+  /// Box holding crash reports not yet accepted by the backend, plus this
+  /// install's random id (used to count affected users).
+  static const String crashQueueBoxName = 'api_studio_crash_queue';
+  static const String installIdKey = '__install_id';
 }

@@ -10,6 +10,8 @@ export 'src/core/redaction/redaction_config.dart';
 export 'src/core/runtime/api_studio_feature.dart';
 export 'src/core/utils/curl_generator.dart';
 export 'src/core/utils/file_type_helper.dart';
+// Crash reporting
+export 'src/crash/crash_breadcrumbs.dart' show ApiStudioNavigatorObserver;
 export 'src/domain/entities/api_log_entity.dart';
 export 'src/domain/entities/breadcrumb.dart';
 export 'src/domain/entities/connectivity_performance.dart';

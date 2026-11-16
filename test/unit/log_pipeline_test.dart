@@ -206,7 +206,7 @@ void main() {
     expect(payload['timestamp'], at.toIso8601String());
     expect(payload['status'], 'error');
     expect(payload['session_id'], ApiStudio.sessionId);
-    expect(payload['sdk'], {'name': 'api_studio', 'version': '1.2.0'});
+    expect(payload['sdk'], {'name': 'api_studio', 'version': AppConstants.sdkVersion});
     expect((payload['device'] as Map)['os'], isNotEmpty);
   });
 

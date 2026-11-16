@@ -92,6 +92,15 @@ class ApiStudioRemoteLogger {
     _user = user.isEmpty ? null : user;
   }
 
+  /// App version/build/flavor set via [setAppInfo], or `null`.
+  static Map<String, Object?>? get appInfo => _app;
+
+  /// The user set via [setUser], or `null`.
+  static Map<String, Object?>? get userInfo => _user;
+
+  /// Best-effort device description sent with logs and crash reports.
+  static Map<String, Object?> get deviceInfo => _device ??= describeDevice();
+
   // ── Configuration ────────────────────────────────────────────────────
 
   /// Configures (or disables) automatic remote logging.

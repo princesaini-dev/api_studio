@@ -178,6 +178,27 @@ await ApiStudio.flush(); // optional: push pending logs immediately
 - Requests to the API Studio backend itself are never captured.
 - Optional aggregated performance telemetry (`enablePerformanceMonitoring: true`), uploaded at most once per interval.
 
+### 💥 Crash reporting (optional)
+
+```dart
+await ApiStudio.initialize(
+  apiKey: 'YOUR_API_KEY',
+  enableCrashReporting: true,
+);
+
+MaterialApp(navigatorObservers: [ApiStudioNavigatorObserver()]); // screens in breadcrumbs
+
+try {
+  await checkout();
+} catch (e, st) {
+  ApiStudio.captureException(e, stackTrace: st, tags: {'screen': 'checkout'});
+}
+```
+
+- Uncaught Flutter and Dart errors show up on the portal's **Issues** page, grouped by stack trace, with the API calls and screens that came before them.
+- Your existing `FlutterError.onError` / `PlatformDispatcher.onError` handlers keep working.
+- Set up **Alerts** in the portal to get Slack, Discord or webhook messages for new crashes, regressions, crash spikes or API failure spikes.
+
 ---
 
 ## 🔒 Privacy and data
