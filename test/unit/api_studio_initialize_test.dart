@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:api_studio/api_studio.dart';
 import 'package:api_studio/src/api_client/core/api_studio_remote_logger.dart';
+import 'package:api_studio/src/crash/crash_reporter.dart';
 import 'package:api_studio/src/services/di_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -35,6 +36,21 @@ void main() {
       expect(ApiStudio.isApiClientEnabled, isTrue);
       expect(ApiStudio.configuredBaseUrl, 'https://api.example.com');
       expect(ApiStudioRemoteLogger.isEnabled, isTrue);
+    });
+
+    test('uploadLogs: false keeps the key for crashes but uploads no logs',
+        () async {
+      await ApiStudio.initialize(
+        apiKey: 'crash-only-key',
+        uploadLogs: false,
+        enableCrashReporting: true,
+      );
+
+      expect(ApiStudioRemoteLogger.isEnabled, isFalse);
+      expect(ApiStudioCrashReporter.isEnabled, isTrue);
+
+      await ApiStudio.initialize(apiKey: null);
+      expect(ApiStudioCrashReporter.isEnabled, isFalse);
     });
 
     test('multiple initialize() calls apply the latest configuration',

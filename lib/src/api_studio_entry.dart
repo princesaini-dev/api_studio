@@ -140,6 +140,11 @@ class ApiStudio {
   /// Add [ApiStudioNavigatorObserver] to your app's `navigatorObservers`
   /// to include screen changes.
   ///
+  /// [uploadLogs] (default `true`) sends captured API logs to the cloud
+  /// portal when [apiKey] is set. Pass `false` to use the key only for
+  /// crash reports and performance telemetry, e.g. in a production app
+  /// whose request bodies belong to your users.
+  ///
   /// [navigatorKey] lets [open] and [showFloatingButton] work without a
   /// [BuildContext].
   ///
@@ -169,6 +174,7 @@ class ApiStudio {
     bool enableFailedApiStream = false,
     bool enablePerformanceMonitoring = false,
     bool enableCrashReporting = false,
+    bool uploadLogs = true,
     NotificationConfig? notificationConfig,
     Duration clientTimeout = const Duration(seconds: 30),
     Map<String, String> clientDefaultHeaders = const {},
@@ -211,7 +217,7 @@ class ApiStudio {
     try {
       ApiStudioRemoteLogger.setAppInfo(
           version: appVersion, build: appBuild, flavor: appFlavor);
-      ApiStudioRemoteLogger.configure(effectiveApiKey);
+      ApiStudioRemoteLogger.configure(uploadLogs ? effectiveApiKey : null);
     } catch (_) {
       // Never let logging setup affect app startup.
     }
@@ -242,7 +248,7 @@ class ApiStudio {
 
     if (effectiveApiKey != null) {
       // Pending cloud uploads survive restarts once the queue is on disk.
-      await ApiStudioRemoteLogger.attachPersistentQueue();
+      if (uploadLogs) await ApiStudioRemoteLogger.attachPersistentQueue();
       if (enableCrashReporting) {
         // Sends crashes saved before the previous launch was killed.
         await ApiStudioCrashReporter.attachPersistentQueue();

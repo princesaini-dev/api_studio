@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.1
+
+### ✨ Added
+- `initialize(uploadLogs: false)` uses the API key only for crash reports and performance telemetry, without uploading API logs. Useful for production apps whose request bodies belong to your users.
+
 ## 1.3.0
 
 ### ✨ Added
