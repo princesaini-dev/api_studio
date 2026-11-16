@@ -380,6 +380,5 @@ class ApiStudioCrashReporter {
     _retryTimer = null;
     _failures = 0;
     _sentPerError.clear();
-
   }
 }

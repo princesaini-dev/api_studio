@@ -78,7 +78,8 @@ void main() {
     expect(payload['tags'], {'screen': 'checkout'});
     expect(payload['extra'], {'cart_id': 'c1'});
     expect((payload['breadcrumbs']! as List).single['message'], 'Tapped Pay');
-    expect(payload['sdk'], {'name': 'api_studio', 'version': AppConstants.sdkVersion});
+    expect(payload['sdk'],
+        {'name': 'api_studio', 'version': AppConstants.sdkVersion});
 
     ApiStudioRemoteLogger.setAppInfo();
     ApiStudioRemoteLogger.setUser();
@@ -127,7 +128,8 @@ void main() {
       }
       await pumpEventQueue();
     }
-    expect(sentEvents(), hasLength(ApiStudioCrashReporter.maxReportsPerErrorPerSession));
+    expect(sentEvents(),
+        hasLength(ApiStudioCrashReporter.maxReportsPerErrorPerSession));
   });
 
   test('chains onto existing FlutterError.onError handlers', () async {
@@ -154,7 +156,8 @@ void main() {
   test('silent Flutter errors are not reported', () async {
     FlutterError.onError = (_) {};
     ApiStudioCrashReporter.configure(apiKey: 'sdk-key', enabled: true);
-    FlutterError.onError!(FlutterErrorDetails(exception: Exception('img'), silent: true));
+    FlutterError.onError!(
+        FlutterErrorDetails(exception: Exception('img'), silent: true));
     await pumpEventQueue();
     expect(http.requests, isEmpty);
   });
@@ -167,7 +170,8 @@ void main() {
     };
     ApiStudioCrashReporter.configure(apiKey: 'sdk-key', enabled: true);
 
-    final handled = PlatformDispatcher.instance.onError!(ArgumentError('async'), StackTrace.current);
+    final handled = PlatformDispatcher.instance.onError!(
+        ArgumentError('async'), StackTrace.current);
     await pumpEventQueue();
 
     expect(handled, isTrue);
@@ -216,7 +220,8 @@ void main() {
       for (var i = 0; i < 100; i++) {
         CrashBreadcrumbs.add(category: 'log', message: 'step $i');
       }
-      expect(CrashBreadcrumbs.items, hasLength(CrashBreadcrumbs.maxBreadcrumbs));
+      expect(
+          CrashBreadcrumbs.items, hasLength(CrashBreadcrumbs.maxBreadcrumbs));
       expect(CrashBreadcrumbs.items.last['message'], 'step 99');
     });
 
@@ -234,9 +239,12 @@ void main() {
       unawaited(key.currentState!.pushNamed('/cart'));
       await tester.pumpAndSettle();
 
-      final nav = CrashBreadcrumbs.items.where((c) => c['category'] == 'navigation').toList();
+      final nav = CrashBreadcrumbs.items
+          .where((c) => c['category'] == 'navigation')
+          .toList();
       expect(nav.last['message'], 'push → /cart');
-      expect(nav.last['data'], {'action': 'push', 'to': '/cart', 'from': '/home'});
+      expect(
+          nav.last['data'], {'action': 'push', 'to': '/cart', 'from': '/home'});
     });
   });
 }
