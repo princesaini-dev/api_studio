@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.2
+
+### 🐛 Fixed
+- Web: `ApiStudioClient` sent a header twice when it was set both in `defaultHeaders` and on the request (including the client's own `Content-Type`), because `XMLHttpRequest` appends repeated headers. `Content-Type: application/json, application/json` made servers such as FastAPI reject JSON bodies. Each header is now sent once, with the per-request value winning.
+
 ## 1.3.1
 
 ### ✨ Added

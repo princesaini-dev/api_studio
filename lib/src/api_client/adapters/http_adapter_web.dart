@@ -14,6 +14,7 @@ import '../models/api_response.dart';
 import '../request/api_request_options.dart';
 import '../request/cancel_token.dart';
 import '../request/multipart_file.dart';
+import 'request_headers.dart';
 
 typedef ProgressCallback = void Function(int count, int total);
 
@@ -82,13 +83,11 @@ class HttpAdapter {
     request.open(options.method.value, uri.toString());
     request.responseType = 'arraybuffer';
 
-    // Apply default headers
-    for (final e in config.defaultHeaders.entries) {
+    // Default and per-request headers, one value per name: setRequestHeader
+    // appends rather than replaces, so a name must only be set once.
+    final headers = mergeRequestHeaders(config.defaultHeaders, options.headers);
+    for (final e in headers.entries) {
       request.setRequestHeader(e.key, e.value);
-    }
-    // Apply per-request headers
-    for (final e in options.headers.entries) {
-      request.setRequestHeader(e.key, e.value.toString());
     }
 
     // Set multipart Content-Type if needed

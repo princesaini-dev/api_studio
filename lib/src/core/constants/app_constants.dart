@@ -41,7 +41,7 @@ class AppConstants {
   static String get apiStudioLogsBatchUrl => '$apiStudioLogsUrl/batch';
 
   /// Version of this package, reported with uploaded logs.
-  static const String sdkVersion = '1.3.1';
+  static const String sdkVersion = '1.3.2';
 
   /// Endpoint that aggregated performance telemetry is POSTed to.
   ///
