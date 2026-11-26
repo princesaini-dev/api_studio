@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart'
+    show AppLifecycleListener, AppLifecycleState;
 import 'package:hive_ce/hive.dart';
 
 import '../../core/constants/app_constants.dart';
@@ -22,6 +24,15 @@ import 'simple_http_client.dart';
 /// * Logs are sent in gzip-compressed batches of up to [maxBatchSize] to
 ///   `/api/v1/logs/batch`, falling back to one request per log on backends
 ///   that do not have the batch endpoint yet.
+/// * Batching keeps the host app's traffic low: pending logs go together
+///   once per [flushInterval] (10 s), or as soon as a full batch of
+///   [maxBatchSize] is waiting. A failed call (error, 5xx, no response)
+///   shortens the wait to [errorFlushDelay]. A 50-call sync therefore costs
+///   one or two extra requests, not fifty.
+/// * Nothing waits for the window when it matters: everything pending is
+///   sent when the app goes to the background or is closed, and when a
+///   crash is captured (with the crash report). If the process dies before
+///   that, the logs are still on disk and go on the next launch.
 /// * Failures back off exponentially (5 s → 5 min). Rejected payloads
 ///   (400/413/422) are dropped so one bad log can never block the queue;
 ///   auth, rate-limit and server errors keep the queue for a later retry.
@@ -34,7 +45,9 @@ class ApiStudioRemoteLogger {
   static String? _apiKey;
   static SimpleHttpClient? _client;
   static Timer? _uploadTimer;
-  static Timer? _debounceTimer;
+  static Timer? _flushTimer;
+  static DateTime? _flushDueAt;
+  static AppLifecycleListener? _lifecycle;
   static Timer? _retryTimer;
   static _UploadQueue _queue = _MemoryQueue();
   static bool _isUploading = false;
@@ -45,8 +58,16 @@ class ApiStudioRemoteLogger {
   static int _batchSize = maxBatchSize;
 
   static const Duration _timeout = Duration(seconds: 15);
+
+  /// Safety net: retries anything still pending (e.g. after backoff).
   static const Duration uploadInterval = Duration(minutes: 5);
-  static const Duration _debounceInterval = Duration(milliseconds: 1500);
+
+  /// How long logs wait to be sent together.
+  static const Duration flushInterval = Duration(seconds: 10);
+
+  /// Shorter wait once a failed call is pending: failures are what people
+  /// look for first, and what tends to come right before a crash.
+  static const Duration errorFlushDelay = Duration(seconds: 2);
   static const Duration _minBackoff = Duration(seconds: 5);
   static const Duration _maxBackoff = Duration(minutes: 5);
 
@@ -111,15 +132,36 @@ class ApiStudioRemoteLogger {
     _apiKey = (apiKey != null && apiKey.trim().isNotEmpty) ? apiKey : null;
     _uploadTimer?.cancel();
     _uploadTimer = null;
-    _debounceTimer?.cancel();
-    _debounceTimer = null;
+    _cancelFlushTimer();
     _retryTimer?.cancel();
     _retryTimer = null;
-    if (!isEnabled) return;
+    if (!isEnabled) {
+      _lifecycle?.dispose();
+      _lifecycle = null;
+      return;
+    }
     _uploadTimer = Timer.periodic(uploadInterval, (_) {
-      if (_queue.length > 0) unawaited(_uploadPending());
+      if (_queue.length > 0) unawaited(_uploadPending(all: true));
     });
-    if (_queue.length > 0) _scheduleDebounce();
+    _lifecycle ??= _listenToLifecycle();
+    if (_queue.length > 0) _scheduleFlush(urgent: true);
+  }
+
+  /// Sends everything pending when the app leaves the foreground: the OS
+  /// may kill a background app at any time, and a closed app sends nothing.
+  static AppLifecycleListener? _listenToLifecycle() {
+    try {
+      return AppLifecycleListener(onStateChange: (state) {
+        if (state == AppLifecycleState.hidden ||
+            state == AppLifecycleState.paused ||
+            state == AppLifecycleState.detached) {
+          if (_queue.length > 0) unawaited(uploadNow());
+        }
+      });
+    } catch (_) {
+      // No widgets binding (pure Dart use): only the timers apply.
+      return null;
+    }
   }
 
   /// Moves the queue into Hive so pending logs survive restarts, and
@@ -136,7 +178,8 @@ class ApiStudioRemoteLogger {
       }
       await persistent.trimTo(maxPendingPayloads);
       _queue = persistent;
-      if (isEnabled && _queue.length > 0) _scheduleDebounce();
+      // Logs left from the previous launch (e.g. it crashed): send soon.
+      if (isEnabled && _queue.length > 0) _scheduleFlush(urgent: true);
     } catch (e) {
       debugPrint('[ApiStudio] Upload queue not persisted ($e); '
           'keeping it in memory.');
@@ -150,13 +193,16 @@ class ApiStudioRemoteLogger {
   static int get pendingPayloadCount => _queue.length;
 
   /// Forces an immediate upload of all pending payloads, ignoring backoff.
+  ///
+  /// Called by `ApiStudio.flush`, when the app goes to the background, and
+  /// when a crash is captured.
   static Future<void> uploadNow() async {
-    _debounceTimer?.cancel();
-    _debounceTimer = null;
+    if (!isEnabled) return;
+    _cancelFlushTimer();
     // Wait for an upload already in flight, then send whatever is left.
     final inFlight = _inFlight;
     if (inFlight != null) await inFlight;
-    await _uploadPending(force: true);
+    await _uploadPending(force: true, all: true);
   }
 
   // ── Enqueue ──────────────────────────────────────────────────────────
@@ -174,7 +220,7 @@ class ApiStudioRemoteLogger {
         return _queue.trimTo(maxPendingPayloads);
       }).catchError((_) {}));
 
-      _scheduleDebounce(immediate: log.hasError);
+      _scheduleFlush(urgent: log.hasError);
     } catch (_) {}
   }
 
@@ -217,24 +263,42 @@ class ApiStudioRemoteLogger {
         url.contains(AppConstants.apiStudioLogsPath);
   }
 
-  static void _scheduleDebounce({bool immediate = false}) {
+  static void _cancelFlushTimer() {
+    _flushTimer?.cancel();
+    _flushTimer = null;
+    _flushDueAt = null;
+  }
+
+  static int get _fullBatch => _batchUnsupported ? 1 : _batchSize;
+
+  /// Sends a full batch right away; otherwise makes sure the pending logs
+  /// go within [flushInterval] ([errorFlushDelay] when [urgent]). Never
+  /// pushes an earlier flush back.
+  static void _scheduleFlush({bool urgent = false}) {
     if (!isEnabled) return;
-    if (immediate || _queue.length >= 10) {
-      _debounceTimer?.cancel();
-      _debounceTimer = null;
+    if (_queue.length >= _fullBatch && !_batchUnsupported) {
       unawaited(_uploadPending());
       return;
     }
-    if (_debounceTimer != null && _debounceTimer!.isActive) return;
-    _debounceTimer = Timer(_debounceInterval, () {
-      _debounceTimer = null;
-      unawaited(_uploadPending());
+    final delay = urgent ? errorFlushDelay : flushInterval;
+    final due = DateTime.now().add(delay);
+    final current = _flushDueAt;
+    if (_flushTimer != null && current != null && !current.isAfter(due)) {
+      return;
+    }
+    _flushTimer?.cancel();
+    _flushDueAt = due;
+    _flushTimer = Timer(delay, () {
+      _flushTimer = null;
+      _flushDueAt = null;
+      unawaited(_uploadPending(all: true));
     });
   }
 
   // ── Upload ───────────────────────────────────────────────────────────
 
-  static Future<void> _uploadPending({bool force = false}) {
+  /// Sends pending logs: everything when [all], else only full batches.
+  static Future<void> _uploadPending({bool force = false, bool all = false}) {
     if (!isEnabled || _isUploading || _queue.length == 0) {
       return Future<void>.value();
     }
@@ -246,22 +310,33 @@ class ApiStudioRemoteLogger {
     if (apiKey == null) return Future<void>.value();
 
     _isUploading = true;
-    return _inFlight = _drain(apiKey).whenComplete(() {
+    return _inFlight = _drain(apiKey, all: all || force).whenComplete(() {
       _isUploading = false;
       _inFlight = null;
+      // Logs that arrived during the upload wait for the next window.
+      if (isEnabled && _queue.length > 0 && _retryTimer == null) {
+        _scheduleFlush();
+      }
     });
   }
 
-  static Future<void> _drain(String apiKey) async {
+  static Future<void> _drain(String apiKey, {required bool all}) async {
     try {
       final client = _client ??= SimpleHttpClient();
-      while (isEnabled && _queue.length > 0) {
+      // A flush sends what was pending when it started; logs that arrive
+      // meanwhile wait for the next window. Otherwise only full batches go,
+      // so a partial one never costs a request of its own.
+      var left = all ? _queue.length : 0;
+      while (isEnabled &&
+          _queue.length > 0 &&
+          (all ? left > 0 : _queue.length >= _fullBatch)) {
         final batch = _takeBatch();
         final outcome = await _send(client, apiKey, batch);
         switch (outcome) {
           case _Outcome.accepted:
           case _Outcome.dropped:
             await _queue.remove(batch.map((e) => e.key));
+            left -= batch.length;
             _consecutiveFailures = 0;
             _retryAt = null;
           case _Outcome.tooLarge:
@@ -269,6 +344,7 @@ class ApiStudioRemoteLogger {
               _batchSize = math.max(1, batch.length ~/ 2);
             } else {
               await _queue.remove(batch.map((e) => e.key));
+              left -= 1;
             }
           case _Outcome.switchedMode:
             break;
@@ -355,7 +431,7 @@ class ApiStudioRemoteLogger {
     _retryTimer?.cancel();
     _retryTimer = Timer(delay, () {
       _retryTimer = null;
-      unawaited(_uploadPending());
+      unawaited(_uploadPending(all: true));
     });
   }
 
@@ -388,6 +464,8 @@ class ApiStudioRemoteLogger {
   @visibleForTesting
   static void debugReset() {
     configure(null);
+    _lifecycle?.dispose();
+    _lifecycle = null;
     final queue = _queue;
     if (queue is _HiveQueue) unawaited(queue.clear());
     _queue = _MemoryQueue();

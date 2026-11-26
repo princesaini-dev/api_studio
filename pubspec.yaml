@@ -36,6 +36,8 @@ dependencies:
   web: ^1.1.1
 
 dev_dependencies:
+  # Pinned by flutter_test; used directly for timer-driven upload tests.
+  fake_async: any
   flutter_test:
     sdk: flutter
   flutter_lints: ">=5.0.0 <7.0.0"

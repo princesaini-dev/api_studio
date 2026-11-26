@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### ⚡ Improved
+- Log uploads are batched by time: pending logs go together every 10 s, or at once when 50 are waiting. A failed call shortens the wait to 2 s. A 50-call sync now costs 1 extra request instead of up to 50.
+- Pending logs are sent right away when the app goes to the background or closes, and when a crash is captured, so the API calls that led to a crash arrive with it. If the process dies first, they are on disk and go on the next launch.
+
+### 🐛 Fixed
+- `initialize()` now warns when a later call (for example without `apiKey`) turns off cloud log upload or crash reporting for the rest of the launch. The example app no longer does this on its Proxy, SSL and Duplicate screens.
+
 ## 1.3.2
 
 ### 🐛 Fixed

@@ -179,6 +179,12 @@ class ApiStudioCrashReporter {
       _sentPerError[key] = sent + 1;
 
       unawaited(_enqueue(jsonEncode(payload)).then((_) => upload()));
+      // The API calls that led here are usually still waiting for their
+      // batch window: send them now, next to the crash, rather than risk
+      // the app closing first. (If it does, they go on the next launch.)
+      if (ApiStudioRemoteLogger.pendingPayloadCount > 0) {
+        unawaited(ApiStudioRemoteLogger.uploadNow().catchError((_) {}));
+      }
     } catch (_) {
       // A crash reporter that crashes is worse than none.
     }
