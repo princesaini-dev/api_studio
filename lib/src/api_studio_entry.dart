@@ -214,6 +214,8 @@ class ApiStudio {
 
     ApiStudioRuntime.enabled = true;
 
+    _warnIfCloudTurnedOff(effectiveApiKey, uploadLogs, enableCrashReporting);
+
     try {
       ApiStudioRemoteLogger.setAppInfo(
           version: appVersion, build: appBuild, flavor: appFlavor);
@@ -288,6 +290,30 @@ class ApiStudio {
     }
 
     _isInitialized = true;
+  }
+
+  /// A second [initialize] without `apiKey` (e.g. to reset the client)
+  /// silently stops cloud logging for the rest of the launch; say so.
+  static void _warnIfCloudTurnedOff(
+    String? apiKey,
+    bool uploadLogs,
+    bool enableCrashReporting,
+  ) {
+    final stopsUploads =
+        ApiStudioRemoteLogger.isEnabled && (apiKey == null || !uploadLogs);
+    final stopsCrashes = ApiStudioCrashReporter.isEnabled &&
+        (apiKey == null || !enableCrashReporting);
+    if (!stopsUploads && !stopsCrashes) return;
+    debugPrint(
+      '[ApiStudio] initialize() was called again '
+      '${apiKey == null ? 'without an apiKey' : 'with uploads or crash reporting off'}: '
+      '${[
+        if (stopsUploads) 'cloud log upload',
+        if (stopsCrashes) 'crash reporting',
+      ].join(' and ')} '
+      'is now OFF for this launch. Pass the same apiKey again, or use '
+      'ApiStudioClient.initialize() to only change the client.',
+    );
   }
 
   static void _initClient(

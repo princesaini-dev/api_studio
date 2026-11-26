@@ -46,10 +46,9 @@ class _DuplicateScreenState extends State<DuplicateScreen> {
               setState(() => _log.add('Request ${i + 1}: ${e.runtimeType}'))),
     );
     await Future.wait(futures);
-    ApiStudio.initialize(
-      baseUrl: 'https://jsonplaceholder.typicode.com',
-      enableApiClient: true,
-    );
+    // Restore the default client. Calling ApiStudio.initialize again here
+    // without the apiKey would switch off cloud logging for this launch.
+    ApiStudioClient.initialize(baseUrl: 'https://jsonplaceholder.typicode.com');
     setState(() {
       _loading = false;
       _log.add('Done.');

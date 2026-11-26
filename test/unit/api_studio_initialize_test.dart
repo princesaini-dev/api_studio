@@ -4,6 +4,7 @@ import 'package:api_studio/api_studio.dart';
 import 'package:api_studio/src/api_client/core/api_studio_remote_logger.dart';
 import 'package:api_studio/src/crash/crash_reporter.dart';
 import 'package:api_studio/src/services/di_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../test_helpers/fake_path_provider.dart';
@@ -76,6 +77,39 @@ void main() {
       expect(ApiStudio.configuredBaseUrl, 'https://third.example.com');
       // A null apiKey on a later call disables remote logging again.
       expect(ApiStudioRemoteLogger.isEnabled, isFalse);
+    });
+
+    test('re-initializing without the apiKey warns that uploads stop',
+        () async {
+      final printed = <String>[];
+      final original = debugPrint;
+      debugPrint = (String? message, {int? wrapWidth}) {
+        if (message != null) printed.add(message);
+      };
+      addTearDown(() => debugPrint = original);
+
+      await ApiStudio.initialize(
+        apiKey: 'warn-key',
+        enableCrashReporting: true,
+      );
+      expect(printed.where((m) => m.contains('is now OFF')), isEmpty);
+
+      // Same key again: nothing is switched off, no warning.
+      await ApiStudio.initialize(
+        apiKey: 'warn-key',
+        enableCrashReporting: true,
+      );
+      expect(printed.where((m) => m.contains('is now OFF')), isEmpty);
+
+      await ApiStudio.initialize(baseUrl: 'https://api.example.com');
+      final warning = printed.singleWhere((m) => m.contains('is now OFF'));
+      expect(warning, contains('without an apiKey'));
+      expect(warning, contains('cloud log upload and crash reporting'));
+      expect(ApiStudioRemoteLogger.isEnabled, isFalse);
+
+      // Nothing left to switch off: no second warning.
+      await ApiStudio.initialize(baseUrl: 'https://api.example.com');
+      expect(printed.where((m) => m.contains('is now OFF')), hasLength(1));
     });
 
     test('null or empty apiKey disables remote logging without throwing',

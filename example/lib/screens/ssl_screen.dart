@@ -58,10 +58,10 @@ class _SslScreenState extends State<SslScreen> {
         _isError = true;
       });
     } finally {
-      ApiStudio.initialize(
-        baseUrl: 'https://jsonplaceholder.typicode.com',
-        enableApiClient: true,
-      );
+      // Restore the default client. Calling ApiStudio.initialize again here
+      // without the apiKey would switch off cloud logging for this launch.
+      ApiStudioClient.initialize(
+          baseUrl: 'https://jsonplaceholder.typicode.com');
       setState(() => _loading = false);
     }
   }
